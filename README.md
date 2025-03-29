@@ -1,1 +1,1 @@
-# resp-viruses-SE-stratified-transmission-models
+# SE-stratified-transmission-models
