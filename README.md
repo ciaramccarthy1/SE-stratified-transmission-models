@@ -22,7 +22,7 @@ The pipeline is run by running the R file main.r, which:
 * Sources R and c++ code in /code/
 * Outputs model epidemic outcomes to /output/ for each respiratory virus
 
-Output includes (currenlty set for the urban population):
+Output includes (currently set for the urban population):
 * Plots of number of infectious people with clinical or sub-clinical infections
 * Plots versions for overall population, or by socio-economic strata, or by age group
 * Summary of parameter inputs and settings
@@ -30,11 +30,21 @@ Output includes (currenlty set for the urban population):
 
 # Further work
 Under development:
-* Risk group definition through age and/or SES to refine specification of the vaccination programmes.
-* Other refinements of vaccination implementation sepecific to each infcetion.
+* Risk-group definition through age and/or SES to refine the specification of vaccination programmes.
+* Other refinements of vaccination implementation sepecific to each infection.
+* For influenza, a single infectious state is usually used in the model
+* it's under debate whether to separate sub-clinical infections, but if so lit parameter estimates may not be reliable.
+
+Inclusion of hospitalisations:
+* A further H compartment can be added to fit secondary care data (if available) or estimate severe outcomes (if required); 
+* robust estimates of clinical parameters exists for COVID-19, but some may not be available for influenza and SRV. 
+
+Fitting primary care disgnostic data or secondary care data, depending of availability:
+* The model tracks the number of new clinical infections (all infections, for influenza) scaled by a reporting rate;
+* this variable can be used to fit reported case data 
 
 Implementation:
-* Tests show the current model code is fast (median 20-25ms, depending on platform and running processes) and has a hight degree of accuracy.
+* Tests show the current model code is fast (median run 20-25ms, depending on platform and running processes) and has a hight degree of accuracy.
 * Further implementation may involve use of c++ numerical libraries; but requires more compact and more error-prone formulation  
  
 
