@@ -1,4 +1,4 @@
-# Respiratory virus transmissiom models with socio-economic startification of disease states and social contacts
+# Respiratory-virus transmissiom models with socio-economic startification of disease states and social contacts
 
 # Project overview
 This modelling framework is part of Work Package 4 (WP4) of the Winter Pressures project. 
