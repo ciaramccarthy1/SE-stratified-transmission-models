@@ -59,8 +59,8 @@ pars <- within(pars, {
 
     #Initial condition
     #imd=1, age 30 to 39", 1/100,000 latent infections
-    p1a0   <- rep(0,na*nimd)  #initialise proportion latently infected across age-SES
-    p1a0[5] = (1/10^5)        #1/100,000 latent infections
+    pE1g0   <- rep(0,na*nimd)  #initialise proportion latently infected across age x SES groups
+    pE1g0[5] = (1/10^5)        #1/100,000 latent infections in age group 5 in SES 1
     
     #rate of reporting by age #Assumed
     rrep <- rep(0.5,9) 

@@ -63,28 +63,37 @@ pa<-vector(); for (i in 1:na){pa[i]=sum(demog2021$Population[which(demog2021$Age
 
 
 ## Initial state: S, E1:2, I1:2, U1:2, R, D
-oNa  <- vector();   # 1/Population
-Sa0  <- vector();   # Susceptible - Initial population, unless there's acquired immunity
-E1a0 <- rep(0,ng);  # Exposed     - seed of epidemic
-E2a0 <- rep(0,ng);  # Exposed
-U1a0 <- rep(0,ng);  # Pre-clinical cases
-U2a0 <- rep(0,ng);  # Pre-clinical cases
-I1a0 <- rep(0,ng);  # Sub-clinical cases
-I2a0 <- rep(0,ng);  # clinical cases
-Ra0  <- rep(0,ng);  # Recovered 
-Da0  <- rep(0,ng);  # Dead 
+oNg  <- vector();   # 1/Population
+Sg0  <- vector();   # Susceptible - Initial population, unless there's acquired immunity
+E1g0 <- rep(0,ng);  # Exposed     - seed of epidemic
+E2g0 <- rep(0,ng);  # Exposed
+U1g0 <- rep(0,ng);  # Pre-clinical cases
+U2g0 <- rep(0,ng);  # Pre-clinical cases
+I1g0 <- rep(0,ng);  # Sub-clinical cases
+I2g0 <- rep(0,ng);  # clinical cases
+Rg0  <- rep(0,ng);  # Recovered 
+Dg0  <- rep(0,ng);  # Dead 
 for (is in 1:nimd) {
-  Sa0[(is-1)*na + 1:na] =   demog2021$Population[1:na + na*(is-1) + na*nimd*(1-urb)] # whole urb population
-  oNa[(is-1)*na + 1:na] = 1/demog2021$Population[1:na + na*(is-1) + na*nimd*(1-urb)] # 1/number in each age group
+  Sg0[(is-1)*na + 1:na] =   demog2021$Population[1:na + na*(is-1) + na*nimd*(1-urb)] # whole urb population
+  oNg[(is-1)*na + 1:na] = 1/demog2021$Population[1:na + na*(is-1) + na*nimd*(1-urb)] # 1/number in each age group
 }
+## Population by age group (over SES), by SES (over age), overall
+Na<-rep(0,na)
+Ns<-rep(0,nimd)
+for (ia in 1:na) { for (is in 1:nimd) {
+    Na[ia] = Na[ia] + 1/oNg[(is-1)*na + ia] 
+    Ns[is] = Ns[is] + 1/oNg[(is-1)*na + ia] }}
+Npop = sum(1/oNg);
+
+  
 # Checks:
 #  sum(demog2021$Population)                                    #[1] 56550138
 #  sum(demog2021$Population[which(demog2021$rural=="Rural")])   #[1]  9683314
 #  sum(demog2021$Population[which(demog2021$rural=="Urban")])   #[1] 46866824
 #  sum(1/oNa)                                                   #[1] 46866824
 # pars: imd=1, age 30 to 39", 1/100,000 latent infections
-E1a0 = (1/oNa)*pars$p1a0
-Sa0  = Sa0 - E1a0
+E1g0 = (1/oNg)*pars$pE1g0
+Sg0  = Sg0 - E1g0
 
 
 ## R0 and average contacts
@@ -96,8 +105,8 @@ print(paste0("Assuming R0 = ", pars$R0 ,"... beta is ", round(betanew,4), "/day"
 ## Parameters
 parscpp45 = within(parscpp45 <- pars, {
                  cm=as.vector(cm45); cmdim1=cm45dim1; mI=pars$m; beta=betanew;
-                 Sa0=Sa0; E1a0=E1a0; I1a0=I1a0; I2a0=I2a0; U1a0=U1a0; U2a0=U2a0; 
-                 Ra0=Ra0; Da0=Da0; oNa=oNa })
+                 Sg0=Sg0; E1g0=E1g0; I1g0=I1g0; I2g0=I2g0; U1g0=U1g0; U2g0=U2g0; 
+                 Rg0=Rg0; Dg0=Dg0; oNg=oNg })
 #  for output
 parsum = parscpp45;
 #  remove what's not needed for Rcpp
@@ -123,17 +132,22 @@ cat("\n")
 
 
 ## fig 1 overall
-data <- data.frame(time=rep(mas$byw$time,2), IUw=c(mas$byw$Iw, mas$byw$Uw),
-                   State=rep(c("Clinical","Unascertained"),each=length(mas$byw$time)))
+data <- data.frame(time=rep(mas$byw$time,2), IUw=10^5*c(mas$byw$Iw, mas$byw$Uw)/Npop,
+                   State=rep(c("Clini","Unasc"),each=length(mas$byw$time)))
 
 p1 <- ggplot(data, aes(x=time)) + 
-      geom_line(aes(y = IUw/10^6, group=State, color=State), lwd=0.8)  +
-      theme(text=element_text(size=14),
-      legend.key.size = unit(1, 'cm'),
+      geom_line(aes(y = IUw, group=State, color=State), lwd=0.8)  +
+      theme(text=element_text(size=10),
+      legend.key.size = unit(3, 'mm'),
+      plot.title = element_text(size = 13),
       axis.text.y = element_text(color=1),
       axis.text.x = element_text(color=1)) +
-      labs(y = "Infectious incidence (10^6/week)", x = "Day", color = "State") +
-      ggtitle(paste0(area," all age & SE strata")) 
+      labs(y = "Infectious incid. /100k/week", x = "Day", color = "State") +
+      ggtitle(paste0(parsum$Disease,", ",area," all age & SE strata")) 
+
+if (pset$platform=="repo" & pars$Disease=="RSV-illness") p1R<-p1
+if (pset$platform=="repo" & pars$Disease=="Influenza")   p1F<-p1
+if (pset$platform=="repo" & pars$Disease=="COVID-19")    p1C<-p1
 
 #filename=paste0(parsum$Disease,"_",area,"_SEIRD_Iw_Uw_overall_",TODAY)
 filename=paste0(parsum$Disease,"_",area,"_SEIRD_Infectious_incidence_",TODAY)
@@ -144,19 +158,24 @@ dev.off()
 
 ## fig 2 by ses
 data <- data.frame(time=rep(mas$byw$time,5), 
-                   IUw=c(mas$byw$IUw_s1, mas$byw$IUw_s2, mas$byw$IUw_s3, mas$byw$IUw_s4, mas$byw$IUw_s5),
-                   Iw =c(mas$byw$Iw_s1,  mas$byw$Iw_s2,  mas$byw$Iw_s3,  mas$byw$Iw_s4,  mas$byw$Iw_s5),
+      IUw=10^5*c(mas$byw$IUw_s1/Ns[1], mas$byw$IUw_s2/Ns[2], mas$byw$IUw_s3/Ns[3], mas$byw$IUw_s4/Ns[4], mas$byw$IUw_s5/Ns[5]),
+      Iw =10^5*c(mas$byw$Iw_s1/Ns[1],  mas$byw$Iw_s2/Ns[2],  mas$byw$Iw_s3/Ns[3],  mas$byw$Iw_s4/Ns[4],  mas$byw$Iw_s5/Ns[4]),
                    IMD=rep(1:5,each=length(mas$byw$time)))
 p2 <- ggplot(data, aes(x=time)) + 
       #geom_line(aes(y = IUw/10^6, group=IMD, color=IMD), lwd=0.8)  +
-      geom_line(aes(y = Iw/10^6, group=IMD, color=IMD), lwd=0.8)  +
-      theme(text=element_text(size=14),
-      #legend.key.size = unit(1, 'cm'),
+      geom_line(aes(y = Iw, group=IMD, color=IMD), lwd=0.8)  +
+      theme(text=element_text(size=10),
+      legend.key.size = unit(3, 'mm'),
+      plot.title = element_text(size = 13),
       axis.text.y = element_text(color=1),
       axis.text.x = element_text(color=1)) +
       #labs(y = "Infectious clinical & subcl. incidence (10^6/week)", x = "Day", color = "IMD") +
-      labs(y = "Clinical incidence (10^6/week)", x = "Day", color = "IMD") +
-      ggtitle(paste0(area," by SE strata"))
+      labs(y = "Clinical infs. /100k/week", x = "Day", color = "IMD") +
+      ggtitle(paste0(parsum$Disease,", ",area," by SE strata"))
+
+if (pset$platform=="repo" & pars$Disease=="RSV-illness") p2R<-p2
+if (pset$platform=="repo" & pars$Disease=="Influenza")   p2F<-p2
+if (pset$platform=="repo" & pars$Disease=="COVID-19")    p2C<-p2
 
 #filename=paste0(parsum$Disease,"_",area,"_SEIRD_Iw+Uw_by_SES_",TODAY)
 filename=paste0(parsum$Disease,"_",area,"_SEIRD_Clinical_indicence_by_SES_",TODAY)
@@ -167,21 +186,28 @@ dev.off()
 
 ## fig 3 by age
 data <- data.frame(time=rep(mas$byw$time,9), 
-                   IUw=c(mas$byaw$IUw_a1, mas$byaw$IUw_a2, mas$byaw$IUw_a3, mas$byaw$IUw_a4, mas$byaw$IUw_a5,
-                         mas$byaw$IUw_a6, mas$byaw$IUw_a7, mas$byaw$IUw_a8, mas$byaw$IUw_a9),
-                   Iw =c(mas$byaw$Iw_a1,  mas$byaw$Iw_a2,  mas$byaw$Iw_a3,  mas$byaw$Iw_a4,  mas$byaw$Iw_a5,
-                         mas$byaw$Iw_a6,  mas$byaw$Iw_a7,  mas$byaw$Iw_a8,  mas$byaw$Iw_a9),
+       IUw=10^5*c(mas$byaw$IUw_a1/Na[1], mas$byaw$IUw_a2/Na[2], mas$byaw$IUw_a3/Na[3], mas$byaw$IUw_a4/Na[4], 
+                  mas$byaw$IUw_a5/Na[5], mas$byaw$IUw_a6/Na[6], mas$byaw$IUw_a7/Na[7], mas$byaw$IUw_a8/Na[8], 
+                  mas$byaw$IUw_a9/Na[9]),
+        Iw=10^5*c(mas$byaw$Iw_a1/Na[1],  mas$byaw$Iw_a2/Na[2],  mas$byaw$Iw_a3/Na[3],  mas$byaw$Iw_a4/Na[4],  
+                  mas$byaw$Iw_a5/Na[5],  mas$byaw$Iw_a6/Na[6],  mas$byaw$Iw_a7/Na[7],  mas$byaw$Iw_a8/Na[8],
+                  mas$byaw$Iw_a9/Na[9]),
                    AGE=rep(1:9,each=length(mas$byw$time)))
 p3 <- ggplot(data, aes(x=time)) + 
   #geom_line(aes(y = IUw/10^6, group=AGE, color=AGE), lwd=0.8)  +
-  geom_line(aes(y = Iw/10^6, group=AGE, color=AGE), lwd=0.8)  +
-  theme(text=element_text(size=14),
-        #legend.key.size = unit(1, 'cm'),
+  geom_line(aes(y = Iw, group=AGE, color=AGE), lwd=0.8)  +
+  theme(text=element_text(size=10),
+        legend.key.size = unit(3, 'mm'),
+        plot.title = element_text(size = 13),
         axis.text.y = element_text(color=1),
         axis.text.x = element_text(color=1)) +
   #labs(y = "Infectious clinical & subcl. incidence (10^6/week)", x = "Day", color = "Age") +
-  labs(y = "Clinical & incidence (10^6/week)", x = "Day", color = "Age") +
-  ggtitle(paste0(area," by age group"))
+  labs(y = "Clinical infs. /100k/week", x = "Day", color = "Age") +
+  ggtitle(paste0(parsum$Disease,", ",area," by age group"))
+
+if (pset$platform=="repo" & pars$Disease=="RSV-illness") p3R<-p3
+if (pset$platform=="repo" & pars$Disease=="Influenza")   p3F<-p3
+if (pset$platform=="repo" & pars$Disease=="COVID-19")    p3C<-p3
 
 #filename=paste0(parsum$Disease,"_",area,"_SEIRD_Iw+Uw_by_Age_",TODAY)
 filename=paste0(parsum$Disease,"_",area,"_SEIRD_Clinical_incidence_by_Age_",TODAY)
@@ -190,6 +216,26 @@ print(p3)
 dev.off()
 
 
+## fig 4 - all diseases
+
+if (pset$platform=="repo" & pars$Disease=="RSV-illness"){
+  filename=paste0("All_diseases_",area,"_SEIRD_all_indicators_",TODAY)
+  #par(mfrow = c(3, 3))
+  pdf(file=paste0(output_dir,"/",filename,".pdf"))
+  #print(p1C)
+  #print(p2C)
+  #print(p3C)
+  #print(p1F)
+  #print(p2F)
+  #print(p3F)
+  #print(p1R)
+  #print(p2R)
+  #print(p3R)
+  gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R)
+    dev.off()
+}
+  
+  
 ## Performance
 DIAGNOSTIC=pset$DIAGNOSTIC #1
 ncomparisons=pset$ncomparisons #1 #2
@@ -259,7 +305,6 @@ if (DIAGNOSTIC==1){
 
 
 ## Text summary
-Npop=sum(1/oNa);
 
 sink(file = paste0(output_dir,"/",parsum$Disease,"_",area,"_SEIRD_parameters_",TODAY,".txt"),append=FALSE,split=FALSE)
 
@@ -290,9 +335,9 @@ print(paste0("clinical  fraction by age : ")); print(parsum$y)
 print(paste0("mortality fraction by age : ")); print(parsum$mI)
 
 cat("\n Initial condition \n");
-print(paste0("Initial latent proportion p1a0: ")); print(as.numeric(parsum$p1a0))
-print(paste0("Initial latent infections E1a0: ")); print(as.numeric(parsum$p1a0*(1/oNa)))
-print(paste0("Initial susceptible        Sa0: ")); print(Sa0)
+print(paste0("Initial latent proportion pE1g0: ")); print(as.numeric(parsum$pE1g0))
+print(paste0("Initial latent infections  E1g0: ")); print(as.numeric(parsum$pE1g0*(1/oNg)))
+print(paste0("Initial susceptible         Sg0: ")); print(Sg0)
 
 cat("\n Temporal \n")
 print(paste0("Time range:       ", range(pars$times)))

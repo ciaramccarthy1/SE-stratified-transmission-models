@@ -56,8 +56,8 @@ pars <- within(pars, {
     
     #Initial condition
     #imd=1, age 30 to 39", 1/100,000 latent infections
-    p1a0   <- rep(0,na*nimd)  #initialise proportion latently infected across age-SES
-    p1a0[5] = (1/10^5)        #1/100,000 latent infections
+    pE1g0   <- rep(0,na*nimd)  #initialise proportion latently infected across age x SES groups
+    pE1g0[5] = (1/10^5)        #1/100,000 latent infections in age group 5 in SES 1
     
     #rate of reporting - variant & age-adjusted Baguelin 2013, Fig 22, 36, S52-54 2007-08, H3N2 dominant over H1N1, B
     rrep <- c(0.004000, 0.004000, 0.014500, 0.025000, 0.025000, 0.025000, 0.025000, 0.018125, 0.011250)
