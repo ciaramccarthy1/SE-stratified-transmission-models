@@ -2,16 +2,19 @@
 
 # Project overview
 This modelling framework is part of Work Package 4 (WP4) of the Winter Pressures project. 
-The project aims to quantify inequality in the health impacts and in the primary care
-of respiratory infections in England during winter, using electronic health records accessed through OpenSAFELY.
+The project aims to quantify inequality in health impacts and in primary care of respiratory infections 
+in England during winter using electronic health records accessed through OpenSAFELY.
 https://www.opensafely.org/approved-projects/172/. 
-WP4 aims to model winter epidemics of three main respiratory viruses impacting primary and secondary care, 
-and to evaluate the potential of vaccination to ameliorate their unequal health impacts across 
-socio-economic and ethnically distinct populations.
+WP4 aims to use transmission modelling approaches applied to winter epidemics of three main respiratory 
+viruses to evaluate how demographic factors and unequal vaccination coverage affect respiratory virus 
+transmission in different population groups and how these could be mitigated thorugh targetted vaccination.
+As the first stage, we have extended existing dynamic transmission models for influenza, COVID-19 and RSV, 
+used previously in the UK for vaccine decision making, to include stratification by socioeconomic quintile.
+
 
 # Model framework
 The dynamic transmission model has a single flexible compartmental structure parametersised for each 
-of the respiratory viruses causing COVID-19, Influenza, and Respiratory Syncytial Virus (SRV) illness. 
+of the three respiratory viruses considered. 
 
 The current model inputs (in /data/ ) include:
 * literature-based model parameters for COVID-19, Influenza, and SRV.
