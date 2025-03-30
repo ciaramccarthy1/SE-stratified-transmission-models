@@ -44,8 +44,8 @@ Fitting primary care disgnostic data or secondary care data, depending of availa
 * this variable can be used to fit reported case data 
 
 Implementation:
-* Tests show the current model code is fast (median run 20-25ms, depending on platform and running processes) and has a hight degree of accuracy.
-* Further implementation may involve use of c++ numerical libraries; but requires more compact and more error-prone formulation  
+* Tests show the current model code is very fast (median run 4-5ms, depending on platform and running processes) and has high accuracy.
+* Further implementation may involve use of c++ numerical libraries; which requires more compact and error-prone formulation  
  
 
 | Folder    | Function  |
