@@ -8,7 +8,7 @@ pars <- within(pars, {
     u   <- c(0.63750, 0.63750, 0.50625, 0.37500, 0.37500, 0.37500, 0.37500, 0.37500, 0.37500)
     #Critically infected fraction
     y   <- rep(1,9)    #Treat clinical ans sub-clin infections similarly, with some potentially causing death
-    y   <- rep(0.55,9) #most common value in flu studies in IFRdone, CFRsdone, multipliers
+    #y   <- rep(0.55,9) #most common value in flu studies in IFRdone, CFRsdone, multipliers
     #Clinical fraction - by age and IMD group
     y45 <- rep(y,5)
 

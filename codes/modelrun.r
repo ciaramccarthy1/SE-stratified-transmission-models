@@ -4,6 +4,7 @@ library(bench)
 library(magrittr)
 library(ggplot2)
 library(ggtext)
+library(gridExtra)
 library(Rcpp)
 library(tidyverse)
 
@@ -122,66 +123,54 @@ print(paste0("Peak:  ", round(Iwpeakval,3) ," (million) at ", Iwpeakloc, " days"
 cat("\n")
 
 
-## Plotting overall
-#  (for comparison with past model runs)
-#plot(mas$byw$time,  (mas$byw$It)/(7/pars$dt),type="l",lty="solid",col=1,ylab="Infectious",xlab="Day")
-#lines(mas$byw$time, (mas$byw$Ut)/(7/pars$dt),type="l",lty="solid",col=3,ylab="Infectious",xlab="Day")
-#lines(mas$byw$time, (mas$byw$Iw)/7,type="l",lty="dashed",col=1)
-#lines(mas$byw$time, (mas$byw$Uw)/7,type="l",lty="dashed",col=3)
+## Figures
+ar=1 #aspect ratio
 
+filename=paste0(parsum$Disease,"_",area,"_SEIRD_epidemic_",TODAY)
+pdf(file=paste0(output_dir,"/",filename,".pdf"))
 
 
 ## fig 1 overall
 data <- data.frame(time=rep(mas$byw$time,2), IUw=10^5*c(mas$byw$Iw, mas$byw$Uw)/Npop,
-                   State=rep(c("Clini","Unasc"),each=length(mas$byw$time)))
+                   State=rep(c("Clinic","Unasc"),each=length(mas$byw$time)))
 
 p1 <- ggplot(data, aes(x=time)) + 
       geom_line(aes(y = IUw, group=State, color=State), lwd=0.8)  +
       theme(text=element_text(size=10),
-      legend.key.size = unit(3, 'mm'),
-      plot.title = element_text(size = 13),
-      axis.text.y = element_text(color=1),
-      axis.text.x = element_text(color=1)) +
-      labs(y = "Infectious incid. /100k/week", x = "Day", color = "State") +
-      ggtitle(paste0(parsum$Disease,", ",area," all age & SE strata")) 
+            legend.key.size = unit(2, 'mm'),
+            plot.title = element_text(size = 12),
+            axis.text.y = element_text(color=1),
+            axis.text.x = element_text(color=1)) +
+      labs(y = "Infectious inc./100k/week", x = "Day", color = "State") +
+      ggtitle(paste0(parsum$Disease,", ",area)) #+ theme(aspect.ratio=ar)
 
+print(p1)
 if (pset$platform=="repo" & pars$Disease=="RSV-illness") p1R<-p1
 if (pset$platform=="repo" & pars$Disease=="Influenza")   p1F<-p1
 if (pset$platform=="repo" & pars$Disease=="COVID-19")    p1C<-p1
 
-#filename=paste0(parsum$Disease,"_",area,"_SEIRD_Iw_Uw_overall_",TODAY)
-filename=paste0(parsum$Disease,"_",area,"_SEIRD_Infectious_incidence_",TODAY)
-pdf(file=paste0(output_dir,"/",filename,".pdf"))
-print(p1)
-dev.off()
-
 
 ## fig 2 by ses
 data <- data.frame(time=rep(mas$byw$time,5), 
-      IUw=10^5*c(mas$byw$IUw_s1/Ns[1], mas$byw$IUw_s2/Ns[2], mas$byw$IUw_s3/Ns[3], mas$byw$IUw_s4/Ns[4], mas$byw$IUw_s5/Ns[5]),
-      Iw =10^5*c(mas$byw$Iw_s1/Ns[1],  mas$byw$Iw_s2/Ns[2],  mas$byw$Iw_s3/Ns[3],  mas$byw$Iw_s4/Ns[4],  mas$byw$Iw_s5/Ns[4]),
-                   IMD=rep(1:5,each=length(mas$byw$time)))
+      IUw=10^5*c(mas$byw$IUw_s1/Ns[1], mas$byw$IUw_s2/Ns[2], mas$byw$IUw_s3/Ns[3], 
+                 mas$byw$IUw_s4/Ns[4], mas$byw$IUw_s5/Ns[5]),
+      Iw =10^5*c(mas$byw$Iw_s1/Ns[1],  mas$byw$Iw_s2/Ns[2],  mas$byw$Iw_s3/Ns[3],  
+                 mas$byw$Iw_s4/Ns[4],  mas$byw$Iw_s5/Ns[4]),
+      IMD=rep(1:5,each=length(mas$byw$time)))
 p2 <- ggplot(data, aes(x=time)) + 
-      #geom_line(aes(y = IUw/10^6, group=IMD, color=IMD), lwd=0.8)  +
       geom_line(aes(y = Iw, group=IMD, color=IMD), lwd=0.8)  +
       theme(text=element_text(size=10),
-      legend.key.size = unit(3, 'mm'),
-      plot.title = element_text(size = 13),
-      axis.text.y = element_text(color=1),
-      axis.text.x = element_text(color=1)) +
-      #labs(y = "Infectious clinical & subcl. incidence (10^6/week)", x = "Day", color = "IMD") +
+            legend.key.size = unit(2, 'mm'),
+            plot.title = element_text(size = 12),
+            axis.text.y = element_text(color=1),
+            axis.text.x = element_text(color=1)) +
       labs(y = "Clinical infs. /100k/week", x = "Day", color = "IMD") +
-      ggtitle(paste0(parsum$Disease,", ",area," by SE strata"))
+      ggtitle(paste0(parsum$Disease,", ",area)) #+ theme(aspect.ratio=ar)
 
+print(p2)
 if (pset$platform=="repo" & pars$Disease=="RSV-illness") p2R<-p2
 if (pset$platform=="repo" & pars$Disease=="Influenza")   p2F<-p2
 if (pset$platform=="repo" & pars$Disease=="COVID-19")    p2C<-p2
-
-#filename=paste0(parsum$Disease,"_",area,"_SEIRD_Iw+Uw_by_SES_",TODAY)
-filename=paste0(parsum$Disease,"_",area,"_SEIRD_Clinical_indicence_by_SES_",TODAY)
-pdf(file=paste0(output_dir,"/",filename,".pdf"))
-print(p2)
-dev.off()
 
 
 ## fig 3 by age
@@ -192,50 +181,40 @@ data <- data.frame(time=rep(mas$byw$time,9),
         Iw=10^5*c(mas$byaw$Iw_a1/Na[1],  mas$byaw$Iw_a2/Na[2],  mas$byaw$Iw_a3/Na[3],  mas$byaw$Iw_a4/Na[4],  
                   mas$byaw$Iw_a5/Na[5],  mas$byaw$Iw_a6/Na[6],  mas$byaw$Iw_a7/Na[7],  mas$byaw$Iw_a8/Na[8],
                   mas$byaw$Iw_a9/Na[9]),
-                   AGE=rep(1:9,each=length(mas$byw$time)))
+        AGE=rep(1:9,each=length(mas$byw$time)))
 p3 <- ggplot(data, aes(x=time)) + 
-  #geom_line(aes(y = IUw/10^6, group=AGE, color=AGE), lwd=0.8)  +
-  geom_line(aes(y = Iw, group=AGE, color=AGE), lwd=0.8)  +
-  theme(text=element_text(size=10),
-        legend.key.size = unit(3, 'mm'),
-        plot.title = element_text(size = 13),
+      geom_line(aes(y = Iw, group=AGE, color=AGE), lwd=0.8)  +
+      theme(text=element_text(size=10),
+        legend.key.size = unit(2, 'mm'),
+        plot.title = element_text(size = 12),
         axis.text.y = element_text(color=1),
         axis.text.x = element_text(color=1)) +
-  #labs(y = "Infectious clinical & subcl. incidence (10^6/week)", x = "Day", color = "Age") +
-  labs(y = "Clinical infs. /100k/week", x = "Day", color = "Age") +
-  ggtitle(paste0(parsum$Disease,", ",area," by age group"))
+      labs(y = "Clinical infs. /100k/week", x = "Day", color = "Age") +
+      ggtitle(paste0(parsum$Disease,", ",area))  #+ theme(aspect.ratio=ar)
 
+print(p3)
+dev.off()
 if (pset$platform=="repo" & pars$Disease=="RSV-illness") p3R<-p3
 if (pset$platform=="repo" & pars$Disease=="Influenza")   p3F<-p3
 if (pset$platform=="repo" & pars$Disease=="COVID-19")    p3C<-p3
-
-#filename=paste0(parsum$Disease,"_",area,"_SEIRD_Iw+Uw_by_Age_",TODAY)
-filename=paste0(parsum$Disease,"_",area,"_SEIRD_Clinical_incidence_by_Age_",TODAY)
-pdf(file=paste0(output_dir,"/",filename,".pdf"))
-print(p3)
-dev.off()
 
 
 ## fig 4 - all diseases
 
 if (pset$platform=="repo" & pars$Disease=="RSV-illness"){
-  filename=paste0("All_diseases_",area,"_SEIRD_all_indicators_",TODAY)
-  #par(mfrow = c(3, 3))
-  pdf(file=paste0(output_dir,"/",filename,".pdf"))
-  #print(p1C)
-  #print(p2C)
-  #print(p3C)
-  #print(p1F)
-  #print(p2F)
-  #print(p3F)
-  #print(p1R)
-  #print(p2R)
-  #print(p3R)
-  gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R)
-    dev.off()
+  filename=paste0("All_diseases_",area,"_SEIRD_epidemics_",TODAY)
+  pdf(file=paste0(output_dir,"/",filename,".pdf")) ##,paper = "USr")
+     gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3)
+  dev.off()
+  
+  gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3)
+  
+  ggsave(paste0(output_dir,"/",filename,".png"), dpi=600, 
+         gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3), device = "png")
 }
-  
-  
+
+
+
 ## Performance
 DIAGNOSTIC=pset$DIAGNOSTIC #1
 ncomparisons=pset$ncomparisons #1 #2
@@ -278,21 +257,7 @@ if (DIAGNOSTIC==1){
                 ggplot(aes(x = mem_alloc, y = time, color = expression)) + geom_point()
      dev.off()
      
-     #if (require(ggplot2) && require(tidyr) && require(ggbeeswarm)) {
-     #      # Beeswarm plot
-     #        autoplot(test)
-     #      # ridge (joyplot)
-     #        autoplot(test, "ridge")
-     #      # If you want to have the plots ordered by execution time you can do so by
-     #      # ordering factor levels in the expressions.
-     #          if (require(dplyr) && require(forcats)) {
-     #                test %>%
-     #                      mutate(expression = forcats::fct_reorder(as.character(expression), min, .desc = TRUE)) %>%
-     #                      as_bench_mark() %>%
-     #                      autoplot("violin")
-     #          }}
-     
-     }#comparisons
+  }#comparisons
   
   ##Profiling
   #sourceCpp(file = paste0(source_dir,"/","SEIRDa.cpp"))
@@ -315,11 +280,11 @@ print(paste0("Population: ", Npop))
 print(paste0("Age groups: ", parsum$na))
 print(paste0("SE  groups: ", parsum$nimd))
 print(paste0("All groups: ", parsum$na*parsum$nimd))
-print(paste0("Age distribution: ")); pa*Npop
-print(paste0("Age proportions:  ")); round(pa,4)
-print(paste0("Ages:             ")); parsum$ages
-print(paste0("Age (median):     ")); parsum$age
-print(paste0("Reporting rate:   ")); parsum$rrep
+print(paste0("Age distribution: ")); print(pa*Npop)
+print(paste0("Age proportions:  ")); print(round(pa,4))
+print(paste0("Ages:             ")); print(parsum$ages)
+print(paste0("Age (median):     ")); print(parsum$age)
+print(paste0("Reporting rate:   ")); print(parsum$rrep)
 
 cat("\n Natural history \n")
 print(paste0("Assuming R0 = ", parsum$R0))
@@ -347,7 +312,7 @@ print(paste0("dt:               ", pars$dt))
 
 cat("\n Contacts \n")
 print(paste0("Contact data: Polymod 2005"))
-print(paste0("Average contact rate of cm45: ", round(cav,5)))
+print(paste0("Average contact rate of cm45: ", round(cav,3)))
 print(paste0("Contact matrix: ", parsum$cmdim1, " x ", parsum$cmdim1))
 print(paste0("Contact matrix: ")); #cm
 
@@ -359,6 +324,4 @@ sink()
 
 cat("\n")
 
-#filename=paste0(output_dir,"/",parsum$Disease,"_",area,"_SEIRD_parameters_",TODAY,".txt")
-#write.table(t(as.data.frame(out)), file = filename, row.names = FALSE, col.names = FALSE)
 

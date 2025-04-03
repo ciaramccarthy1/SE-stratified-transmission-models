@@ -6,14 +6,19 @@
 [1] "SE  groups: 5"
 [1] "All groups: 45"
 [1] "Age distribution: "
+[1] 2684743 4090306 3247455 7028831 6267841 5896621 6329395 4956942 6364689
 [1] "Age proportions:  "
+[1] 0.0573 0.0873 0.0693 0.1500 0.1337 0.1258 0.1351 0.1058 0.1358
 [1] "Ages:             "
+[1] "0 to 4"   "5 to 11"  "12 to 17" "18 to 29" "30 to 39" "40 to 49" "50 to 59" "60 to 69" "70+"     
 [1] "Age (median):     "
+[1]  2.0  8.0 14.5 23.5 34.5 44.5 54.5 64.5 80.0
 [1] "Reporting rate:   "
+[1] 0.004000 0.004000 0.014500 0.025000 0.025000 0.025000 0.025000 0.018125 0.011250
 
  Natural history 
 [1] "Assuming R0 = 1.95"
-[1] "  then beta = (1/day) 0.3292"
+[1] "  then beta = (1/day) 0.181"
 [1] "latent period (tEI, tEU),   days:    0.8"
 [1] "infectious period (rIR),    days:    1.8"
 [1] "infectious period (rUR),    days:    1.8"
@@ -23,10 +28,9 @@
 [1] "susceptibility by age     : "
 [1] 0.63750 0.63750 0.50625 0.37500 0.37500 0.37500 0.37500 0.37500 0.37500
 [1] "clinical  fraction by age : "
-[1] 0.55 0.55 0.55 0.55 0.55 0.55 0.55 0.55 0.55
+[1] 1 1 1 1 1 1 1 1 1
 [1] "mortality fraction by age : "
-[1] 9.636364e-05 1.454545e-05 1.454545e-05 2.109091e-04 2.490909e-04 2.490909e-04 2.490909e-04 4.890909e-03
-[9] 9.532727e-03
+[1] 0.000053 0.000008 0.000008 0.000116 0.000137 0.000137 0.000137 0.002690 0.005243
 
  Initial condition 
 [1] "Initial latent proportion pE1g0: "
@@ -53,10 +57,10 @@
 
  Contacts 
 [1] "Contact data: Polymod 2005"
-[1] "Average contact rate of cm45: 10.80047"
+[1] "Average contact rate of cm45: 10.8"
 [1] "Contact matrix: 45 x 45"
 [1] "Contact matrix: "
 
  Iw peak 
-[1] "Peak:  6.83 (million) at 42 days"
+[1] "Peak:  12.419 (million) at 42 days"
 

@@ -6,10 +6,15 @@
 [1] "SE  groups: 5"
 [1] "All groups: 45"
 [1] "Age distribution: "
+[1] 2684743 4090306 3247455 7028831 6267841 5896621 6329395 4956942 6364689
 [1] "Age proportions:  "
+[1] 0.0573 0.0873 0.0693 0.1500 0.1337 0.1258 0.1351 0.1058 0.1358
 [1] "Ages:             "
+[1] "0 to 4"   "5 to 11"  "12 to 17" "18 to 29" "30 to 39" "40 to 49" "50 to 59" "60 to 69" "70+"     
 [1] "Age (median):     "
+[1]  2.0  8.0 14.5 23.5 34.5 44.5 54.5 64.5 80.0
 [1] "Reporting rate:   "
+[1] 0.0023321 0.0000305 0.0000305 0.0000305 0.0000305 0.0000305 0.0000888 0.0001470 0.0001470
 
  Natural history 
 [1] "Assuming R0 = 4.8"
@@ -53,7 +58,7 @@
 
  Contacts 
 [1] "Contact data: Polymod 2005"
-[1] "Average contact rate of cm45: 10.80047"
+[1] "Average contact rate of cm45: 10.8"
 [1] "Contact matrix: 45 x 45"
 [1] "Contact matrix: "
 
