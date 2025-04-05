@@ -4,10 +4,17 @@ pset <- within(pset, {
     TIME  <- format(Sys.time(),'%H.%M.%S_%d-%m-%Y')
 
     Disease      <- "Influenza" #"RSV-illness" #"COVID-19"#
+    Vaccination  <- 0 #1
+    if(Vaccination==1){Namevacc="vaccine_"} else {Namevacc=""}
+    
     DIAGNOSTIC   <- 1 #0
     ncomparisons <- 1
+
+    FIGURES      <- 1 #0 #1
+    SUMMARY      <- 1 #0 #1
+    
 	  COMPILE      <- 1
-	platform     <- "repo" # "pc"
+	platform       <- "repo" # "pc"
 	
 	if(platform=="repo") TODAY=""
 })

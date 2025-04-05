@@ -1,4 +1,9 @@
 
+
+ Iw peak 
+[1] "Peak:  12.419 (million) at 42 days"
+
+ Study 
 [1] "Disease:    Influenza"
 [1] "Area:       Urban"
 [1] "Population: 46866824"
@@ -60,7 +65,4 @@
 [1] "Average contact rate of cm45: 10.8"
 [1] "Contact matrix: 45 x 45"
 [1] "Contact matrix: "
-
- Iw peak 
-[1] "Peak:  12.419 (million) at 42 days"
 

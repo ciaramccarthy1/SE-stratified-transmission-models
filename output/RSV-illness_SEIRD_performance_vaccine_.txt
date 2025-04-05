@@ -2,4 +2,4 @@
 # A tibble: 1 × 11
   expression            min median `itr/sec` mem_alloc `gc/sec` n_itr  n_gc total_time result       memory    
   <bch:expr>       <bch:tm> <bch:>     <dbl> <bch:byt>    <dbl> <int> <dbl>   <bch:tm> <list>       <list>    
-1 model(parscpp45)   4.48ms 4.75ms      200.    37.4KB     4.08    98     2      491ms <named list> <Rprofmem>
+1 model(parscpp45)   13.2ms 13.7ms      67.1    37.4KB     1.37    98     2      1.46s <named list> <Rprofmem>

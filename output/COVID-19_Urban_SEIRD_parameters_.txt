@@ -1,4 +1,9 @@
 
+
+ Iw peak 
+[1] "Peak:  3.062 (million) at 91 days"
+
+ Study 
 [1] "Disease:    COVID-19"
 [1] "Area:       Urban"
 [1] "Population: 46866824"
@@ -60,7 +65,4 @@
 [1] "Average contact rate of cm45: 10.8"
 [1] "Contact matrix: 45 x 45"
 [1] "Contact matrix: "
-
- Iw peak 
-[1] "Peak:  3.062 (million) at 91 days"
 

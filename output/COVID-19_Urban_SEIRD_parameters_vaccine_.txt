@@ -1,10 +1,10 @@
 
 
  Iw peak 
-[1] "Peak:  4.692 (million) at 77 days"
+[1] "Peak:  0.973 (million) at 105 days"
 
  Study 
-[1] "Disease:    RSV-illness"
+[1] "Disease:    COVID-19"
 [1] "Area:       Urban"
 [1] "Population: 46866824"
 [1] "Age groups: 9"
@@ -19,24 +19,23 @@
 [1] "Age (median):     "
 [1]  2.0  8.0 14.5 23.5 34.5 44.5 54.5 64.5 80.0
 [1] "Reporting rate:   "
-[1] 0.0023321 0.0000305 0.0000305 0.0000305 0.0000305 0.0000305 0.0000888 0.0001470 0.0001470
+[1] 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5
 
  Natural history 
-[1] "Assuming R0 = 4.8"
-[1] "  then beta = (1/day) 0.1288"
-[1] "latent period (tEI, tEU),   days:    4.98"
-[1] "infectious period (rIR),    days:    6.16"
-[1] "infectious period (rUR),    days:    6.16"
-[1] "infectious preclin (rI1I2), days:    3.08"
-[1] "infectious clinical (rI2R), days:    3.08"
-[1] "relative subclinical infectiousness: 0.634"
+[1] "Assuming R0 = 2.5"
+[1] "  then beta = (1/day) 0.1013"
+[1] "latent period (tEI, tEU),   days:    3"
+[1] "infectious period (rIR),    days:    5"
+[1] "infectious period (rUR),    days:    5"
+[1] "infectious preclin (rI1I2), days:    2.1"
+[1] "infectious clinical (rI2R), days:    2.9"
+[1] "relative subclinical infectiousness: 0.5"
 [1] "susceptibility by age     : "
-[1] 0.85 0.65 0.65 0.65 0.65 0.65 0.65 0.65 0.65
+[1] 0.40 0.39 0.38 0.72 0.86 0.80 0.82 0.88 0.74
 [1] "clinical  fraction by age : "
-[1] 0.8656 0.4840 0.3486 0.2470 0.2470 0.2470 0.2470 0.2470 0.2470
+[1] 0.2900000 0.2700000 0.1995807 0.2223425 0.2537169 0.2860650 0.3225373 0.3636598 0.4380000
 [1] "mortality fraction by age : "
-[1] 0.002609698 0.001407748 0.165154365 0.405802227 0.405802227 0.405802227 0.405802227 0.405802227
-[9] 0.405802227
+[1] 0.000056 0.000116 0.000348 0.001210 0.003327 0.005627 0.018450 0.053066 0.139813
 
  Initial condition 
 [1] "Initial latent proportion pE1g0: "
@@ -66,4 +65,13 @@
 [1] "Average contact rate of cm45: 10.8"
 [1] "Contact matrix: 45 x 45"
 [1] "Contact matrix: "
+
+ Vaccination 
+[1] "Coverage:         "
+ [1] 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+[1] "Efficacy:         "
+ [1] 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5
+[27] 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5
+[1] "Vaccination rate: 0.00556"
+[1] "Reduce clin frac: 0.15"
 

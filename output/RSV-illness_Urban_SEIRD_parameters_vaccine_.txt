@@ -1,7 +1,7 @@
 
 
  Iw peak 
-[1] "Peak:  4.692 (million) at 77 days"
+[1] "Peak:  2.297 (million) at 77 days"
 
  Study 
 [1] "Disease:    RSV-illness"
@@ -66,4 +66,13 @@
 [1] "Average contact rate of cm45: 10.8"
 [1] "Contact matrix: 45 x 45"
 [1] "Contact matrix: "
+
+ Vaccination 
+[1] "Coverage:         "
+ [1] 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+[1] "Efficacy:         "
+ [1] 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5
+[27] 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5
+[1] "Vaccination rate: 0.00556"
+[1] "Reduce clin frac: 0.15"
 

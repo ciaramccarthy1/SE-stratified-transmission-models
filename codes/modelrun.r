@@ -38,10 +38,18 @@ cm45dim1 = dim(cm45)[1]
 
 
 ## Parameters
-if(pset$Disease=="COVID-19")    source(paste0(source_dir,"/parsC_.r"))
-if(pset$Disease=="Influenza")   source(paste0(source_dir,"/parsF_.r"))
-if(pset$Disease=="RSV-illness") source(paste0(source_dir,"/parsR_.r"))
-print(paste0("Disease: ", pars$Disease))
+if(pset$Vaccination==0){
+   if(pset$Disease=="COVID-19")    source(paste0(source_dir,"/parsC_.r"))
+   if(pset$Disease=="Influenza")   source(paste0(source_dir,"/parsF_.r"))
+   if(pset$Disease=="RSV-illness") source(paste0(source_dir,"/parsR_.r"))
+}else{
+   if(pset$Disease=="COVID-19")    source(paste0(source_dir,"/parsCv_.r"))
+   if(pset$Disease=="Influenza")   source(paste0(source_dir,"/parsFv_.r"))
+   if(pset$Disease=="RSV-illness") source(paste0(source_dir,"/parsRv_.r"))
+}
+print(paste0("Disease:     ", pars$Disease)) 
+print(paste0("Vaccination: ", pars$Vaccination)) 
+##pars$rV=0 #testing vs non-vaccine code
 
 
 ## Demography
@@ -115,7 +123,8 @@ parscpp45 <- parscpp45 %>% magrittr::inset(c('age', 'ages', 'ageons', 'm'), NULL
 
 
 ## Model output (for the proposed parameters)
-if (pset$COMPILE==1) sourceCpp(file = paste0(source_dir,"/","SEIRDas_.cpp"))
+if (pset$COMPILE==1 & pset$Vaccination==0) sourceCpp(file = paste0(source_dir,"/","SEIRDas_.cpp"))
+if (pset$COMPILE==1 & pset$Vaccination==1) sourceCpp(file = paste0(source_dir,"/","SEIRDasvacc_.cpp"))
 mas <- model(parscpp45)
 Iwpeakval = max(mas$byw$Iw)*10^(-6)
 Iwpeakloc = mas$byw$time[which(mas$byw$Iw==max(mas$byw$Iw))]
@@ -124,9 +133,11 @@ cat("\n")
 
 
 ## Figures
+if (pset$FIGURES==1){
+  
 ar=1 #aspect ratio
 
-filename=paste0(parsum$Disease,"_",area,"_SEIRD_epidemic_",TODAY)
+filename=paste0(parsum$Disease,"_",area,"_SEIRD_epidemic_",pset$Namevacc,TODAY)
 pdf(file=paste0(output_dir,"/",filename,".pdf"))
 
 
@@ -202,7 +213,7 @@ if (pset$platform=="repo" & pars$Disease=="COVID-19")    p3C<-p3
 ## fig 4 - all diseases
 
 if (pset$platform=="repo" & pars$Disease=="RSV-illness"){
-  filename=paste0("All_diseases_",area,"_SEIRD_epidemics_",TODAY)
+  filename=paste0("All_diseases_",area,"_SEIRD_epidemics_",pset$Namevacc,TODAY)
   pdf(file=paste0(output_dir,"/",filename,".pdf")) ##,paper = "USr")
      gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3)
   dev.off()
@@ -213,17 +224,17 @@ if (pset$platform=="repo" & pars$Disease=="RSV-illness"){
          gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3), device = "png")
 }
 
+}##FIGURES
 
 
 ## Performance
-DIAGNOSTIC=pset$DIAGNOSTIC #1
-ncomparisons=pset$ncomparisons #1 #2
 
-if (DIAGNOSTIC==1){
-   filename=paste0(parsum$Disease,"_SEIRD_performance_",TODAY)
-   if(ncomparisons==1){
+if (pset$DIAGNOSTIC==1){
+   filename=paste0(parsum$Disease,"_SEIRD_performance_",pset$Namevacc,TODAY)
+   if(pset$ncomparisons==1){  #1 #2
      niter= 100 #3000 #1000
      test <- bench::mark(model(parscpp45), min_iterations = niter)
+     #test <- bench::mark(mas, min_iterations = niter)
      sink(file = paste0(output_dir,"/",filename,".txt"),append=FALSE,split=FALSE)
         print(paste0("Iterations = ", niter))
         print(test[1:11]) #cut last 2 columns
@@ -271,9 +282,16 @@ if (DIAGNOSTIC==1){
 
 ## Text summary
 
-sink(file = paste0(output_dir,"/",parsum$Disease,"_",area,"_SEIRD_parameters_",TODAY,".txt"),append=FALSE,split=FALSE)
+if (pset$SUMMARY==1){
+  
+sink(file = paste0(output_dir,"/",parsum$Disease,"_",area,"_SEIRD_parameters_",pset$Namevacc,TODAY,".txt"),append=FALSE,split=FALSE)
 
 cat("\n")
+
+cat("\n Iw peak \n")
+print(paste0("Peak:  ", round(Iwpeakval,3) ," (million) at ", Iwpeakloc, " days"))
+
+cat("\n Study \n")
 print(paste0("Disease:    ", parsum$Disease))
 print(paste0("Area:       ", area))
 print(paste0("Population: ", Npop))
@@ -316,12 +334,19 @@ print(paste0("Average contact rate of cm45: ", round(cav,3)))
 print(paste0("Contact matrix: ", parsum$cmdim1, " x ", parsum$cmdim1))
 print(paste0("Contact matrix: ")); #cm
 
-cat("\n Iw peak \n")
-print(paste0("Peak:  ", round(Iwpeakval,3) ," (million) at ", Iwpeakloc, " days"))
+if (pset$Vaccination==1){
+cat("\n Vaccination \n")
+print(paste0("Coverage:         ")); print(parsum$vcov)
+print(paste0("Efficacy:         ")); print(parsum$veff)
+print(paste0("Vaccination rate: ", round(parsum$rV,5)))
+print(paste0("Reduce clin frac: ", round(parsum$vcln,5))) }
+
 
 cat("\n")
 sink()
 
 cat("\n")
+
+}##SUMMARY
 
 

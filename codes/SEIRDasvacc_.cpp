@@ -17,8 +17,10 @@ List model(List parscpp) {
   const double rU    = 2*rUR;  
   const double f(    parscpp["f"]);        //infectiousness of sub-clinical relative to clinical
   //vaccination parameters
-  //const NumericVector vcov( parscpp["vcov"]);     //vacc coverage by age
-  //const NumericVector veff( parscpp["veff"]);     //vacc efficacty by age
+  const NumericVector vcov( parscpp["vcov"]);   //vacc coverage by age and SE
+  const NumericVector veff( parscpp["veff"]);   //vacc efficacy by age and SE
+  const double          rV( parscpp["rV"]);     //vacc rate
+  const double        vcln( parscpp["vcln"]);   //vacc reduction in clinical fraction
   
   //integration parameters
   const double dt(   parscpp["dt"]);       //time step for integration
@@ -61,7 +63,7 @@ List model(List parscpp) {
   std::vector<double> U1_0(ng), Uv1_0(ng);    
   std::vector<double> U2_0(ng), Uv2_0(ng);    
   std::vector<double>  R_0(ng),  Rv_0(ng);    
-  std::vector<double>  D_0(ng),  Dv_0(ng);   
+  std::vector<double>  D_0(ng),  Dv_0(ng), Vc_0(ng);   
   std::vector<double> Cc_0(ng), Cvc_0(ng);   
   
   // States(time) = 0 - need initialise St[0] etc, time[0]
@@ -78,13 +80,13 @@ List model(List parscpp) {
   std::vector<double> Cct(nt); //cumulative clinical cases
   
 //LATER: weekly by age
-  NumericVector Sw(nw); //= Rcpp::clone(Sw);
-  NumericVector Ew(nw);  
-  NumericVector Uw(nw); 
-  NumericVector Iw(nw); 
-  NumericVector Rw(nw); 
-  NumericVector Dw(nw); 
-  NumericVector Ccw(nw);
+  NumericVector Sw(nw); //, Svpw(nw); //= Rcpp::clone(Sw);
+  NumericVector Ew(nw); //, Evpw(nw);  
+  NumericVector Uw(nw); //, Ivpw(nw); 
+  NumericVector Iw(nw); //, Uvpw(nw); 
+  NumericVector Rw(nw); //, Rvpw(nw); 
+  NumericVector Dw(nw); //,  
+  NumericVector Ccw(nw); //, Cvcpw(nw);
   NumericVector Ew_s1(nw);
   NumericVector Ew_s2(nw);
   NumericVector Ew_s3(nw);
@@ -128,6 +130,7 @@ List model(List parscpp) {
   double Sig, E1ig, E2ig, I1ig, I2ig, U1ig, U2ig, Rig, Dig;
   
   // age group and population states initialised
+  // Note: vaccinated states are empty initially (Sv_0[]=0 etc)
   for (int is = 0; is < ns; is++) { //ses
   for (int ia = 0; ia < na; ia++) { //age
     ig = ia + is*na;       
@@ -146,21 +149,32 @@ List model(List parscpp) {
   }} //is, ia
 
   // Dynamics of state variables - fine Euler integration
-  time[0] = 0;
+  time[0]    = 0;
+  iW[0]      = 0;  
   int  week  = 1;
   int  week0 = 1;
   
-  double Spw = 0,   Epw = 0,   Upw = 0,   Ipw = 0,   Rpw=0,   Dpw = 0,   Ccpw = 0;     
+  double Spw = 0,   Epw = 0,   Upw = 0,   Ipw = 0,   Rpw=0,   Dpw = 0,   Ccpw = 0;
+  //double Svpw = 0, Evpw = 0,  Uvpw = 0,  Ivpw = 0,  Rvpw = 0,           Cvcpw = 0; //vaccination
+  
   NumericVector Epw_s(ns),   Upw_s(ns),   Ipw_s(ns),   Rpw_s(ns);
   NumericVector Upw_a(na),   Ipw_a(na);
 
-  iW[0]      = 0;
 
-  double Sat, E1at, E2at, U1at, U2at, I1at, I2at, Rat, Dat; //alternative temp-variable declaration
-  double dS, dE1, dE2, dI1, dI2, dU1, dU2, dR, dD, dCc, FOI, FOIS; 
+  //temp parameters
+  int    icm, ig2;                   
   double yas, ua, mIa, rrepa, cmi;
-  int icm, ig2;
-  double rE1, rE2, rU1, rU2, rI1, rI2, dEin, dIin, dUin;
+  double rVas, veas; //, Ng;  //vaccination
+  //temp variables - naive and vacc populations
+  double Sat,  E1at,  E2at,  U1at,  U2at,  I1at,  I2at,  Rat,  Dat;
+  double Svat, Ev1at, Ev2at, Uv1at, Uv2at, Iv1at, Iv2at, Rvat; //, Dvat; //,  Nvg;  //vaccination
+  //changes
+  double dS,  dE1,  dE2,  dI1,  dI2,  dU1,  dU2,  dR,  dD,  dCc,  FOI,  FOIS; 
+  double dSv, dEv1, dEv2, dIv1, dIv2, dUv1, dUv2, dRv, dDv, dCvc,       FOIvS, dVc; 
+  //rates and inputs
+  double rE1,  rE2,  rU1,  rU2,  rI1,  rI2,  dEin,  dIin,  dUin;
+  double rEv1, rEv2, rUv1, rUv2, rIv1, rIv2; //, dEvin, dIvin, dUvin;    //vaccination
+  
   
   for (int it = 0; it < (nt-1); it++) {	//Crucial: nt-1 ////////////////////////
     week0 = week;
@@ -170,10 +184,12 @@ List model(List parscpp) {
     for (int ia = 0; ia < na; ia++) { //////////////////////////////////////////
       ig = is*na + ia; 
       // vector parameters
-      yas  = y45[ig];
+      yas  = y45[ig]*(1-vcln);
       ua   = u[ia];
       mIa  = mI[ia];
       rrepa= rrep[ia];
+      rVas = vcov[ig]*rV;
+      veas = veff[ig];
       // current matrix cells
       Sat  = S_0[ig];
       E1at = E1_0[ig];
@@ -184,7 +200,18 @@ List model(List parscpp) {
       U2at = U2_0[ig];
       Rat  =  R_0[ig];
       Dat  =  D_0[ig];
-
+      //Ng   = 1/oNg[ig];
+      // current matrix cells - vaccinated
+      Svat  = Sv_0[ig];
+      Ev1at = Ev1_0[ig];
+      Ev2at = Ev2_0[ig];
+      Iv1at = Iv1_0[ig];
+      Iv2at = Iv2_0[ig];
+      Uv1at = Uv1_0[ig];
+      Uv2at = Uv2_0[ig];
+      Rvat  =  Rv_0[ig];
+      //Dvat  =  Dv_0[ig];
+      //Nvg   =  Vc_0[ig];
       // force of infection on group ia
       FOI = 0;
       //double beta_ua  = beta_infectivity*u[ia];
@@ -193,47 +220,46 @@ List model(List parscpp) {
            ig2 = is2*na + ia2; 
            icm = ig2*cmdim1 + ig; //icm = ib*cmdim1 + ia;
            cmi = cm[icm];        //as<NumericVector>(parscpp["cm"])[icm]; //cm[icm];
-           FOI       += beta*ua*cmi*( I1_0[ig2] + I2_0[ig2] + f*U1_0[ig2] + f*U2_0[ig2] )*oNg[ig2]; //TODO:UPDATE oNA
+           FOI       += beta*ua*cmi*( I1_0[ig2]  +  I2_0[ig2] +  f*U1_0[ig2] +  f*U2_0[ig2] + 
+                                      Iv1_0[ig2] + Iv2_0[ig2] + f*Uv1_0[ig2] + f*Uv2_0[ig2] )*oNg[ig2]; //TODO:UPDATE oNA
       }} //ir, ib
       //Infection update for next timestep
-             FOIS = FOI*Sat, rE1 = rE*E1at,      rE2 =   rE*E2at, 
-                             rU1 = rU*U1at,      rU2 =   rU*U2at, 
-                             rI1 = rI1I2*I1at,   rI2 = rI2R*I2at,
+             FOIS = FOI*Sat, rE1 =    (rE+rVas)*E1at,   rE2 =   (rE+rVas)*E2at, 
+                             rU1 =    (rU+rVas)*U1at,   rU2 =   (rU+rVas)*U2at, 
+                             rI1 = (rI1I2+rVas)*I1at,   rI2 = (rI2R+rVas)*I2at,
                              dEin = dt*FOIS, 
                              dIin = dt*yas*rE2, 
                              dUin = dt*(1-yas)*rE2;
-      
-          FOIvS = FOvI*Svat, rEv1 = rE*Ev1at,    rEv2 =   rE*Ev2at, 
-                             rUv1 = rU*Uv1at,    rUv2 =   rU*Uv2at, 
-                             rIv1 = rI1I2*Iv1at, rIv2 = rI2R*Iv2at,
-                             dEvin = dt*FOIvS, 
-                             dIvin = dt*yas*rEv2, 
-                             dUvin = dt*(1-yas)*rEv2;
-      // define correct vacc rate and effect - see Assessement
-      double rVas, veas, vcas;
-      // define by group g - pop vaccinated
-      //  Ngv = 
-      dS  = dt*( -FOIS              - veas*vcas*rV*Sat);
-      dE1 = dt*(  FOIS        - rE1 - veas*vcas*rV*E1at);
-      dE2 = dt*(  rE1         - rE2 - veas*vcas*rV*E2at);
-      dI1 = dt*(  yas*rE2     - rI1 - veas*vcas*rV*I1at);
-      dI2 = dt*(  rI1         - rI2 - veas*vcas*rV*I2at);
-      dU1 = dt*(  (1-yas)*rE2 - rU1 - veas*vcas*rV*U1at);
-      dU2 = dt*(  rU1         - rU2 - veas*vcas*rV*U2at);
-      dR  = dt*(  (1-mIa)*rI2 + rU2 - veas*vcas*rV*Rat);
-      dD  = dt*(  mIa*rI2         );
-      dCc = dt*(  yas*rE2*rrepa   );
+          //vaccination
+          FOIvS = FOI*Svat,  rEv1 =    rE*Ev1at, rEv2 =   rE*Ev2at, 
+                             rUv1 =    rU*Uv1at, rUv2 =   rU*Uv2at, 
+                             rIv1 = rI1I2*Iv1at, rIv2 = rI2R*Iv2at; //,
+                             //dEvin = dt*FOIvS, 
+                             //dIvin = dt*yas*rEv2, 
+                             //dUvin = dt*(1-yas)*rEv2;
 
-      // need define Svat, Ev1at, Ev2at, Iv1at, Iv2at, Uv1at, Uv2at, etc 
-      dSv  = dt*( -FOIvS               + (1-veas)*vas*rV*Sat);
-      dEv1 = dt*(  FOIvS        - rEv1 +     veas*vas*rV*E1at);
-      dEv2 = dt*(  rEv1         - rEv2 +     veas*vas*rV*E2at);
-      dIv1 = dt*(  yas*rEv2     - rIv1 +     veas*vas*rV*I1at);
-      dIv2 = dt*(  rIv1         - rIv2 +     veas*vas*rV*I2at);
-      dUv1 = dt*(  (1-yas)*rEv2 - rUv1 +     veas*vas*rV*U1at);
-      dUv2 = dt*(  rU1          - rUv2 +     veas*vas*rV*U2at);
-      dRv  = dt*(  (1-mIa)*rIv2 + rUv2 +     veas*vas*rV*Rat + veas*vas*rV*Sat);
-      dDv  = dt*(  mIa*rIv2         );
+      dS  = dt*( -FOIS          - rVas*Sat);
+      dE1 = dt*(  FOIS          - rE1);
+      dE2 = dt*(  rE1           - rE2);
+      dI1 = dt*(  rE2*yas       - rI1);
+      dI2 = dt*(  rI1           - rI2);
+      dU1 = dt*(  rE2*(1-yas)   - rU1);
+      dU2 = dt*(  rU1           - rU2);
+      dR  = dt*(  rI2*(1-mIa)   + rU2);
+      dD  = dt*(  rI2*mIa           );
+      dCc = dt*(  yas*rE2*rrepa     );
+      //vaccination
+      // TODO: vaccination count - rescale rVas * (Ng -Nvg)/Nvg = no.unvacc/no.vacc
+      dSv  = dt*( -FOIvS               +  rVas*Sat*(1-veas));
+      dEv1 = dt*(  FOIvS        - rEv1 +  rVas*E1at);
+      dEv2 = dt*(  rEv1         - rEv2 +  rVas*E2at);
+      dIv1 = dt*(  yas*rEv2     - rIv1 +  rVas*I1at);
+      dIv2 = dt*(  rIv1         - rIv2 +  rVas*I2at);
+      dUv1 = dt*(  rEv2*(1-yas) - rUv1 +  rVas*U1at);
+      dUv2 = dt*(  rUv1         - rUv2 +  rVas*U2at);
+      dRv  = dt*(  rIv2*(1-mIa) + rUv2 +  rVas*(Rat + veas*Sat));
+      dDv  = dt*(  rIv2*mIa         );
+      dVc  = dt*(  rVas*(Sat + E1at + E2at + I1at + I2at + U1at + U2at + Rat));
       dCvc = dt*(  yas*rEv2*rrepa   );      
       
       S_0[ig]  = Sat  + dS;
@@ -245,7 +271,7 @@ List model(List parscpp) {
       U2_0[ig] = U2at + dU2;
       R_0[ig]  = Rat  + dR;
       D_0[ig]  = Dat  + dD;
-      Cc_0[ig] = Cc_0[ig] + dCc;
+      Cc_0[ig] += dCc;
       // vacc update
       Sv_0[ig]  = Svat  + dSv;
       Ev1_0[ig] = Ev1at + dEv1;
@@ -255,8 +281,9 @@ List model(List parscpp) {
       Uv1_0[ig] = Uv1at + dUv1;
       Uv2_0[ig] = Uv2at + dUv2;
       Rv_0[ig]  = Rvat  + dRv;
-      Dv_0[ig]  = Dvat  + dDv;
-      Cvc_0[ig] = Cvc_0[ig] + dCvc;      
+      Dv_0[ig]  += dDv; //Dvat  + dDv;
+      Vc_0[ig]  += dVc;  //number vaccinated so far in group ig
+      Cvc_0[ig] += dCvc;      
       // time counters
       time[it+1]  = (it+1)*dt;
       week        = 1 + (int) time[it+1]/7;
@@ -279,14 +306,13 @@ List model(List parscpp) {
       Rpw       += dR;
       Dpw       += dD;
       Ccpw      += dCc;
-      //vacc - need?
-      Svpw      += dSv;
-      Evpw      += dEvin;
-      Uvpw      += dUvin;
-      Ivpw      += dIvin;
-      Rvpw      += dRv;
-      Dvpw      += dDv;
-      Cvcpw     += dCvc;      
+      //vaccination
+      //Svpw      += dSv;
+      //Evpw      += dEvin;
+      //Uvpw      += dUvin;
+      //Ivpw      += dIvin;
+      //Rvpw      += dRv;
+      //Cvcpw     += dCvc;      
       // week incidence - SE stratified - each is=1:5 - add age 1:9
       Epw_s[is]  +=  dEin;
       Ipw_s[is]  +=  dIin;
@@ -307,6 +333,13 @@ List model(List parscpp) {
       Rw[week-1]  = Rpw;  Rpw=0; 
       Dw[week-1]  = Dpw;  Dpw=0;
       Ccw[week-1] = Ccpw; Ccpw=0;
+      // vaccination
+      //Svw[week-1]  = Svpw;  Svpw=0;
+      //Evw[week-1]  = Evpw;  Evpw=0; 
+      //Ivw[week-1]  = Ivpw;  Ivpw=0; 
+      //Uvw[week-1]  = Uvpw;  Uvpw=0; 
+      //Rvw[week-1]  = Rvpw;  Rvpw=0; 
+      //Cvcw[week-1] = Cvcpw; Cvcpw=0;
       //SES
       Ew_s1[week-1] = Epw_s[0]; Epw_s[0]=0;
       Ew_s2[week-1] = Epw_s[1]; Epw_s[1]=0;
