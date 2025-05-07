@@ -4,7 +4,7 @@ pset <- within(pset, {
     TIME  <- format(Sys.time(),'%H.%M.%S_%d-%m-%Y')
 
     Disease        <- "Influenza" #"RSV-illness" #"COVID-19"#
-    Vaccination    <- 1 #0 #
+    Vaccination    <- 0 #1 #
     DailyIncidence <- 1 #0
     if(DailyIncidence==1){Incidence="Daily"}   else {Incidence="Weekly"}
     if(Vaccination==1)   {Namevacc="vaccine_"} else {Namevacc=""}
