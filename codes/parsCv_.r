@@ -3,6 +3,8 @@ pars <- within(pars, {
   
     Disease     <- "COVID-19"
     Vaccination <- "Yes"
+    Incidence   <- pset$Incidence
+    
     #Clinical responses
     #Susceptibility
     u    <- c(0.40, 0.39, 0.38, 0.72, 0.86, 0.80, 0.82, 0.88, 0.74) #age-adjusted Davies Nat Med 2020
@@ -35,6 +37,7 @@ pars <- within(pars, {
     times  <- 0:180 #365      #days sequence
     nt     <- (max(times)-min(times))/dt + 1       #no. time points, iterations
     nw     <- ceiling((max(times)-min(times))/7)   #week length of model run
+    nd     <- ceiling((max(times)-min(times)))+1   #days length of model run
     
     #demography
     ages   <- c("0 to 4","5 to 11","12 to 17","18 to 29","30 to 39","40 to 49","50 to 59","60 to 69", "70+")

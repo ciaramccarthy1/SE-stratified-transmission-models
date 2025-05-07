@@ -1,7 +1,7 @@
 
 
  Iw peak 
-[1] "Peak:  12.419 (million) at 42 days"
+[1] "Peak:  1.934 (million) at 40 days"
 
  Study 
 [1] "Disease:    Influenza"

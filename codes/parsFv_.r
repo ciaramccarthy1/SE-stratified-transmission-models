@@ -3,6 +3,8 @@ pars <- within(pars, {
   
     Disease     <- "Influenza"
     Vaccination <- "Yes"
+    Incidence   <- pset$Incidence
+    
     #TODO: check y and year chosen from Baguelin
     #Clinical responses
     #Susceptibility - variant & age-adjusted Baguelin 2013, Fig 22, 36, S52-54 2007-08, H3N2 dominant over H1N1, B
@@ -31,7 +33,8 @@ pars <- within(pars, {
     dt     <- 0.1             #0.01 #time step (days) #smaller than Baguelin 2013 (0.25)
     times  <- 0:180 #365      #days sequence
     nt     <- (max(times)-min(times))/dt + 1       #no. time points, iterations
-    nw     <- ceiling((max(times)-min(times))/7)   #week length of model run
+    nw     <- ceiling((max(times)-min(times))/7)   #weeks length of model run
+    nd     <- ceiling((max(times)-min(times)))+1   #days length of model run
     
     #demography
     ages   <- c("0 to 4","5 to 11","12 to 17","18 to 29","30 to 39","40 to 49","50 to 59","60 to 69", "70+")

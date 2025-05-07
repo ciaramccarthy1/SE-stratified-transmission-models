@@ -1,15 +1,15 @@
 #pipeline SEIRD Rcpp
 
-library(bench)
-library(magrittr)
-library(ggplot2)
-library(ggtext)
-library(gridExtra)
-library(Rcpp)
-library(tidyverse)
+require(bench)
+require(magrittr)
+require(ggplot2)
+require(ggtext)
+require(gridExtra)
+require(Rcpp)
+require(tidyverse)
 
 
-#TODO: vaccination, Risk groups
+#TODO: vaccination refinement, Risk groups
 
 
 ### folders
@@ -47,8 +47,9 @@ if(pset$Vaccination==0){
    if(pset$Disease=="Influenza")   source(paste0(source_dir,"/parsFv_.r"))
    if(pset$Disease=="RSV-illness") source(paste0(source_dir,"/parsRv_.r"))
 }
-print(paste0("Disease:     ", pars$Disease)) 
-print(paste0("Vaccination: ", pars$Vaccination)) 
+print(paste0("Disease:     ", pars$Disease))
+print(paste0("Vaccination: ", pars$Vaccination))
+print(paste0("Incidence  : ", pars$Incidence))
 ##pars$rV=0 #testing vs non-vaccine code
 
 
@@ -123,12 +124,17 @@ parscpp45 <- parscpp45 %>% magrittr::inset(c('age', 'ages', 'ageons', 'm'), NULL
 
 
 ## Model output (for the proposed parameters)
-if (pset$COMPILE==1 & pset$Vaccination==0) sourceCpp(file = paste0(source_dir,"/","SEIRDas_.cpp"))
-if (pset$COMPILE==1 & pset$Vaccination==1) sourceCpp(file = paste0(source_dir,"/","SEIRDasvacc_.cpp"))
+if (pset$COMPILE==1 & pset$Vaccination==0) {
+                if(pset$DailyIncidence==0) sourceCpp(file = paste0(source_dir,"/","SEIRDas_.cpp"))
+                if(pset$DailyIncidence==1) sourceCpp(file = paste0(source_dir,"/","SEIRDasday_.cpp")) }
+if (pset$COMPILE==1 & pset$Vaccination==1) {
+                if(pset$DailyIncidence==0) sourceCpp(file = paste0(source_dir,"/","SEIRDasvacc_.cpp"))
+                if(pset$DailyIncidence==1) sourceCpp(file = paste0(source_dir,"/","SEIRDasvaccday_.cpp")) }
+
 mas <- model(parscpp45)
 Iwpeakval = max(mas$byw$Iw)*10^(-6)
 Iwpeakloc = mas$byw$time[which(mas$byw$Iw==max(mas$byw$Iw))]
-print(paste0("Peak:  ", round(Iwpeakval,3) ," (million) at ", Iwpeakloc, " days"))
+print(paste0("Peak:  ", round(Iwpeakval,3) ," million at ", Iwpeakloc, " days"))
 cat("\n")
 
 
@@ -137,7 +143,8 @@ if (pset$FIGURES==1){
   
 ar=1 #aspect ratio
 
-filename=paste0(parsum$Disease,"_",area,"_SEIRD_epidemic_",pset$Namevacc,TODAY)
+if(pars$Incidence=="Daily"){daily="daily_"} else {daily=""}
+filename=paste0(parsum$Disease,"_",area,"_SEIRD_epidemic_",daily,pset$Namevacc,TODAY)
 pdf(file=paste0(output_dir,"/",filename,".pdf"))
 
 
@@ -213,7 +220,7 @@ if (pset$platform=="repo" & pars$Disease=="COVID-19")    p3C<-p3
 ## fig 4 - all diseases
 
 if (pset$platform=="repo" & pars$Disease=="RSV-illness"){
-  filename=paste0("All_diseases_",area,"_SEIRD_epidemics_",pset$Namevacc,TODAY)
+  filename=paste0("All_diseases_",area,"_SEIRD_epidemics_",daily,pset$Namevacc,TODAY)
   pdf(file=paste0(output_dir,"/",filename,".pdf")) ##,paper = "USr")
      gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3)
   dev.off()
@@ -230,7 +237,7 @@ if (pset$platform=="repo" & pars$Disease=="RSV-illness"){
 ## Performance
 
 if (pset$DIAGNOSTIC==1){
-   filename=paste0(parsum$Disease,"_SEIRD_performance_",pset$Namevacc,TODAY)
+   filename=paste0(parsum$Disease,"_SEIRD_performance_",daily,pset$Namevacc,TODAY)
    if(pset$ncomparisons==1){  #1 #2
      niter= 100 #3000 #1000
      test <- bench::mark(model(parscpp45), min_iterations = niter)
@@ -283,13 +290,14 @@ if (pset$DIAGNOSTIC==1){
 ## Text summary
 
 if (pset$SUMMARY==1){
-  
-sink(file = paste0(output_dir,"/",parsum$Disease,"_",area,"_SEIRD_parameters_",pset$Namevacc,TODAY,".txt"),append=FALSE,split=FALSE)
+
+filename=paste0(parsum$Disease,"_",area,"_SEIRD_parameters_",daily,pset$Namevacc,TODAY)
+sink(file = paste0(output_dir,"/",filename,".txt"),append=FALSE,split=FALSE)
 
 cat("\n")
 
 cat("\n Iw peak \n")
-print(paste0("Peak:  ", round(Iwpeakval,3) ," (million) at ", Iwpeakloc, " days"))
+print(paste0("Peak:  ", round(Iwpeakval,3) ," million at ", Iwpeakloc, " days"))
 
 cat("\n Study \n")
 print(paste0("Disease:    ", parsum$Disease))

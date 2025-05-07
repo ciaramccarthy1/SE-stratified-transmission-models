@@ -1,7 +1,7 @@
 
 
  Iw peak 
-[1] "Peak:  2.297 (million) at 77 days"
+[1] "Peak:  0.351 million at 76 days"
 
  Study 
 [1] "Disease:    RSV-illness"
