@@ -1,5 +1,5 @@
 [1] "Iterations = 100"
 # A tibble: 1 × 11
-  expression            min median `itr/sec` mem_alloc `gc/sec` n_itr  n_gc total_time result       memory    
-  <bch:expr>       <bch:tm> <bch:>     <dbl> <bch:byt>    <dbl> <int> <dbl>   <bch:tm> <list>       <list>    
-1 model(parscpp45)   8.48ms 9.03ms      100.     111KB     2.05    98     2      978ms <named list> <Rprofmem>
+  expression           min median `itr/sec` mem_alloc `gc/sec` n_itr  n_gc total_time result       memory    
+  <bch:expr>       <bch:t> <bch:>     <dbl> <bch:byt>    <dbl> <int> <dbl>   <bch:tm> <list>       <list>    
+1 model(parscpp45)  8.13ms 8.47ms      115.     115KB     1.16    99     1      860ms <named list> <Rprofmem>
