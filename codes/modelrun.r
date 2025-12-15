@@ -109,7 +109,7 @@ Sg0  = Sg0 - E1g0
 ## R0 and average contacts
 source(paste0(source_dir,"/R0_.r"))      #outputs cav
 betanew = R0(pars,as.numeric(pars$R0),0) #default 2.5
-print(paste0("Assuming R0 = ", pars$R0 ,"... beta is ", round(betanew,4), "/day"))
+print(paste0("Assuming R0 = ", pars$R0 ,"... beta is ", round(betanew,4)) )
 
 
 ## Parameters
@@ -124,14 +124,27 @@ parscpp45 <- parscpp45 %>% magrittr::inset(c('age', 'ages', 'ageons', 'm'), NULL
 
 
 ## Model output (for the proposed parameters)
-if (pset$COMPILE==1 & pset$Vaccination==0) {
+if (pset$COMPILE==1) {
+#pset$Vaccination==0 or pset$Vaccination==1
                 if(pset$DailyIncidence==0) sourceCpp(file = paste0(source_dir,"/","SEIRDas_.cpp"))
-                if(pset$DailyIncidence==1) sourceCpp(file = paste0(source_dir,"/","SEIRDasday_.cpp")) }
-if (pset$COMPILE==1 & pset$Vaccination==1) {
+                if(pset$DailyIncidence==1) sourceCpp(file = paste0(source_dir,"/","SEIRDasday_.cpp"))
+                mas <- model(parscpp45)
+## scale of plots without vaccination
+                                           IUw_novacc    = max(10^5*c(mas$byw$Iw, mas$byw$Uw)/Npop) 
+                                           Iw_imd_novacc = max(10^5*c(mas$byw$Iw_s1/Ns[1], mas$byw$Iw_s2/Ns[2], 
+                                                                      mas$byw$Iw_s3/Ns[3], mas$byw$Iw_s4/Ns[4], 
+                                                                      mas$byw$Iw_s5/Ns[5]))
+                                           Iw_age_novacc = max(10^5*c(mas$byaw$Iw_a1/Na[1], mas$byaw$Iw_a2/Na[2],
+                                                                      mas$byaw$Iw_a3/Na[3], mas$byaw$Iw_a4/Na[4],
+                                                                      mas$byaw$Iw_a5/Na[5], mas$byaw$Iw_a6/Na[6],
+                                                                      mas$byaw$Iw_a7/Na[7], mas$byaw$Iw_a8/Na[8],
+                                                                      mas$byaw$Iw_a9/Na[9]))
+				
+if (pset$Vaccination==1) {
                 if(pset$DailyIncidence==0) sourceCpp(file = paste0(source_dir,"/","SEIRDasvacc_.cpp"))
-                if(pset$DailyIncidence==1) sourceCpp(file = paste0(source_dir,"/","SEIRDasvaccday_.cpp")) }
-
-mas <- model(parscpp45)
+                if(pset$DailyIncidence==1) sourceCpp(file = paste0(source_dir,"/","SEIRDasvaccday_.cpp"))
+				mas <- model(parscpp45)
+} }
 Iwpeakval = max(mas$byw$Iw)*10^(-6)
 Iwpeakloc = mas$byw$time[which(mas$byw$Iw==max(mas$byw$Iw))]
 print(paste0("Peak:  ", round(Iwpeakval,3) ," million at ", Iwpeakloc, " days"))
@@ -160,6 +173,7 @@ p1 <- ggplot(data, aes(x=time)) +
             axis.text.y = element_text(color=1),
             axis.text.x = element_text(color=1)) +
       labs(y = "Infectious inc./100k/week", x = "Day", color = "State") +
+	  ylim(0,IUw_novacc) +
       ggtitle(paste0(parsum$Disease,", ",area)) #+ theme(aspect.ratio=ar)
 
 print(p1)
@@ -173,7 +187,7 @@ data <- data.frame(time=rep(mas$byw$time,5),
       IUw=10^5*c(mas$byw$IUw_s1/Ns[1], mas$byw$IUw_s2/Ns[2], mas$byw$IUw_s3/Ns[3], 
                  mas$byw$IUw_s4/Ns[4], mas$byw$IUw_s5/Ns[5]),
       Iw =10^5*c(mas$byw$Iw_s1/Ns[1],  mas$byw$Iw_s2/Ns[2],  mas$byw$Iw_s3/Ns[3],  
-                 mas$byw$Iw_s4/Ns[4],  mas$byw$Iw_s5/Ns[4]),
+                 mas$byw$Iw_s4/Ns[4],  mas$byw$Iw_s5/Ns[5]),
       IMD=rep(1:5,each=length(mas$byw$time)))
 p2 <- ggplot(data, aes(x=time)) + 
       geom_line(aes(y = Iw, group=IMD, color=IMD), lwd=0.8)  +
@@ -183,6 +197,7 @@ p2 <- ggplot(data, aes(x=time)) +
             axis.text.y = element_text(color=1),
             axis.text.x = element_text(color=1)) +
       labs(y = "Clinical infs. /100k/week", x = "Day", color = "IMD") +
+	  ylim(0,Iw_imd_novacc) +
       ggtitle(paste0(parsum$Disease,", ",area)) #+ theme(aspect.ratio=ar)
 
 print(p2)
@@ -208,6 +223,7 @@ p3 <- ggplot(data, aes(x=time)) +
         axis.text.y = element_text(color=1),
         axis.text.x = element_text(color=1)) +
       labs(y = "Clinical infs. /100k/week", x = "Day", color = "Age") +
+	  ylim(0,Iw_age_novacc) +
       ggtitle(paste0(parsum$Disease,", ",area))  #+ theme(aspect.ratio=ar)
 
 print(p3)
@@ -338,7 +354,7 @@ print(paste0("dt:               ", pars$dt))
 
 cat("\n Contacts \n")
 print(paste0("Contact data: Polymod 2005"))
-print(paste0("Average contact rate of cm45: ", round(cav,3)))
+print(paste0("Average contact rate of cm45: ", round(cav,3), "/day"))
 print(paste0("Contact matrix: ", parsum$cmdim1, " x ", parsum$cmdim1))
 print(paste0("Contact matrix: ")); #cm
 

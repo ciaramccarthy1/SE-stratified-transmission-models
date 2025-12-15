@@ -23,7 +23,7 @@ pa0 <- pa0/sum(pa0)
 #     [1] 0 
 #   average contact rate over participants
 cav = sum(pa0*cp)
-print(paste0("Average contact rate of cm45: ", round(cav,5))) #[1] 10.80047
+print(paste0("Average contact rate of cm45: ", round(cav,4), "/day")) #[1] 10.80047
 
 
 
