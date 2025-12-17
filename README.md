@@ -47,7 +47,7 @@ Fitting primary care disgnostic data or secondary care data, depending of availa
 
 Implementation:
 * Tests show the model code is very fast (median run 4-5 milliseconds, depending on platform and running processes) and has high accuracy.
-* Further implementation may involve use of C++ numerical libraries; which could involve more compact and error-prone formulation.
+* Further implementation may involve use of C++ numerical libraries; which could involve more compact formulation.
  
 
 | Folder    | Function  |
