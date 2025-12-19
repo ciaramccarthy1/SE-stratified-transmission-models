@@ -38,11 +38,11 @@ List model(List parscpp) {
   
   // initial states at time[0] - age-vector
   const std::vector<double> Sg0( parscpp["Sg0"]);  // Susceptible
-  const std::vector<double> E1g0(parscpp["E1g0"]); // Exposed TODO: update E1, E2
+  const std::vector<double> E1g0(parscpp["E1g0"]); // Exposed
   const std::vector<double> E2g0(parscpp["E1g0"]); // Exposed
-  const std::vector<double> U1g0(parscpp["U1g0"]); // Sub-clinical cases TODO: update U1, U2
+  const std::vector<double> U1g0(parscpp["U1g0"]); // Sub-clinical cases
   const std::vector<double> U2g0(parscpp["U2g0"]); // Sub-clinical cases
-  const std::vector<double> I1g0(parscpp["I1g0"]); // Pre-clinical cases TODO: update I1, I2
+  const std::vector<double> I1g0(parscpp["I1g0"]); // Pre-clinical cases
   const std::vector<double> I2g0(parscpp["I2g0"]); // Clinical cases
   const std::vector<double> Rg0(parscpp["Rg0"]);   // Recovered
   const std::vector<double> Dg0(parscpp["Dg0"]);   // Dead
@@ -74,7 +74,7 @@ List model(List parscpp) {
   std::vector<double> Cct(nt); //cumulative clinical cases
   
 //LATER: weekly by age
-  NumericVector Sw(nw); //= Rcpp::clone(Sw);
+  NumericVector Sw(nw); // Rcpp::clone(Sw);
   NumericVector Ew(nw);  
   NumericVector Uw(nw); 
   NumericVector Iw(nw); 
@@ -187,9 +187,9 @@ List model(List parscpp) {
       for (int is2 = 0; is2 < ns; is2++) {
       for (int ia2 = 0; ia2 < na; ia2++) {
            ig2 = is2*na + ia2; 
-           icm = ig2*cmdim1 + ig; //icm = ib*cmdim1 + ia;
-           cmi = cm[icm];        //as<NumericVector>(parscpp["cm"])[icm]; //cm[icm];
-           FOI       += beta*ua*cmi*( I1_0[ig2] + I2_0[ig2] + f*U1_0[ig2] + f*U2_0[ig2] )*oNg[ig2]; //TODO:UPDATE oNA
+           icm = ig2*cmdim1 + ig;
+           cmi = cm[icm];
+           FOI       += beta*ua*cmi*( I1_0[ig2] + I2_0[ig2] + f*U1_0[ig2] + f*U2_0[ig2] )*oNg[ig2];
       }} //ir, ib
       //Infection update for next timestep
              FOIS = FOI*Sat, rE1 = rE*E1at,      rE2 =   rE*E2at, 

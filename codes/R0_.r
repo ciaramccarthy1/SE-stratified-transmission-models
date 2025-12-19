@@ -18,9 +18,6 @@ pa0 <- vector()
 for (is in 1:nimd) {
   pa0[(is-1)*na + 1:na] =   demog2021$Proportion[1:na + na*(is-1) + na*nimd*(1-urb)] } #length(pa0) #[1] 45
 pa0 <- pa0/sum(pa0)
-#   Check:
-#     sum(pa0 - demog2021$Proportion[which(demog2021$rural=="Urban")]/sum(demog2021$Proportion[which(demog2021$rural=="Urban")]))
-#     [1] 0 
 #   average contact rate over participants
 cav = sum(pa0*cp)
 print(paste0("Average contact rate of cm45: ", round(cav,4), "/day")) #[1] 10.80047

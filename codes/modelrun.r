@@ -19,11 +19,9 @@ if (pset$platform=="repo"){
 source_dir <- paste0(getwd(),"/codes")
 output_dir <- paste0(getwd(),"/output")
 TODAY      <- pset$TODAY
-#temporarily
-#TODAY      <- paste0("_",format(Sys.Date(), "%d-%m-%Y"))
 } else {
-source_dir <- paste0(getwd()) #,"/codes")
-output_dir <- paste0(getwd()) #,"/output")
+source_dir <- paste0(getwd())
+output_dir <- paste0(getwd())
 TODAY      <- format(Sys.Date(), "%d-%m-%Y")
 }
 
@@ -101,13 +99,13 @@ Npop = sum(1/oNg);
 #  sum(demog2021$Population[which(demog2021$rural=="Rural")])   #[1]  9683314
 #  sum(demog2021$Population[which(demog2021$rural=="Urban")])   #[1] 46866824
 #  sum(1/oNa)                                                   #[1] 46866824
-# pars: imd=1, age 30 to 39", 1/100,000 latent infections
+# pars: age 30 to 39, imd=1, 1/100,000 latent infections
 E1g0 = (1/oNg)*pars$pE1g0
 Sg0  = Sg0 - E1g0
 
 
 ## R0 and average contacts
-source(paste0(source_dir,"/R0_.r"))      #outputs cav
+source(paste0(source_dir,"/R0_.r"))      #outputs av contact rate
 betanew = R0(pars,as.numeric(pars$R0),0) #default 2.5
 print(paste0("Assuming R0 = ", pars$R0 ,"... beta is ", round(betanew,4)) )
 
@@ -118,8 +116,8 @@ parscpp45 = within(parscpp45 <- pars, {
                  Sg0=Sg0; E1g0=E1g0; I1g0=I1g0; I2g0=I2g0; U1g0=U1g0; U2g0=U2g0; 
                  Rg0=Rg0; Dg0=Dg0; oNg=oNg })
 #  for output
-parsum = parscpp45;
-#  remove what's not needed for Rcpp
+parsum = parscpp45
+#  remove what's not needed for Rcpp:
 parscpp45 <- parscpp45 %>% magrittr::inset(c('age', 'ages', 'ageons', 'm'), NULL)  #parscpp45[['age']] <- NULL; etc
 
 
@@ -237,7 +235,7 @@ if (pset$platform=="repo" & pars$Disease=="COVID-19")    p3C<-p3
 
 if (pset$platform=="repo" & pars$Disease=="RSV-illness"){
   filename=paste0("All_diseases_",area,"_SEIRD_epidemics_",daily,pset$Namevacc,TODAY)
-  pdf(file=paste0(output_dir,"/",filename,".pdf")) ##,paper = "USr")
+  pdf(file=paste0(output_dir,"/",filename,".pdf"))
      gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3)
   dev.off()
   
@@ -265,8 +263,6 @@ if (pset$DIAGNOSTIC==1){
      pdf(file=paste0(output_dir,"/",filename,".pdf"))
         print(plot(test))
         ## plot time vs memory allocation
-        #  https://bench.r-lib.org/
-        #  library(tidyr)
         print(test %>% unnest(c(time, gc)) %>%
                  filter(gc == "none") %>%
                  mutate(expression = as.character(expression)) %>%
@@ -274,7 +270,6 @@ if (pset$DIAGNOSTIC==1){
      dev.off()
      
      } else { #For comparisons
-     #sourceCpp(file = paste0(source_dir,"/","SEIURDasv_.cpp"))
      niter= 3000 #1000
      test <- bench::mark(model(parscpp45), model2(parscpp45), min_iterations = 3000) #1000)
      sink(file = paste0(output_dir,"/",filename,".txt"),append=FALSE,split=FALSE)
@@ -293,11 +288,6 @@ if (pset$DIAGNOSTIC==1){
      
   }#comparisons
   
-  ##Profiling
-  #sourceCpp(file = paste0(source_dir,"/","SEIRDa.cpp"))
-  #profvis::profvis(SEIRDa(parscpp))
-  #=> "Error in parse_rprof_lines(lines, expr_source) : 
-  #    No parsing data available. Maybe your function was too fast?"
   
 }#Diagnostic
 
