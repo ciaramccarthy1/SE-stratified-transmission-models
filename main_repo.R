@@ -1,10 +1,11 @@
 ################################################################################
-#library(here)
-setwd("~/GitHub/SE-stratified-transmission-models")
-### forders
-input_dir  <- paste0(getwd(),"/data")
-source_dir <- paste0(getwd(),"/codes")
-output_dir <- paste0(getwd(),"/output")
+
+library(here)
+
+### folders
+input_dir  <- paste0(here("data"))
+source_dir <- paste0(here("codes"))
+output_dir <- paste0(here("output"))
 #fs::dir_create(output_dir)
 
 ### Basic setting

@@ -81,50 +81,20 @@ List model(List parscpp) {
   
 //LATER: dayly by age
   NumericVector Sw(nd); //, Svpw(nd); // Rcpp::clone(Sd);
-  NumericVector Ew(nd); //, Evpw(nd); // if wanted output no. vaccinated 
-  NumericVector Uw(nd); //, Ivpw(nd); 
-  NumericVector Iw(nd); //, Uvpw(nd); 
-  NumericVector Rw(nd); //, Rvpw(nd); 
-  NumericVector Dw(nd); //,  
+  NumericVector Ew(nd); //, Evpw(nd); // if wanted output no. vaccinated
+  NumericVector Uw(nd); //, Ivpw(nd);
+  NumericVector Iw(nd); //, Uvpw(nd);
+  NumericVector Rw(nd); //, Rvpw(nd);
+  NumericVector Dw(nd); //,
   NumericVector Ccw(nd); //, Cvcpw(nd);
-  NumericVector Ew_s1(nd);
-  NumericVector Ew_s2(nd);
-  NumericVector Ew_s3(nd);
-  NumericVector Ew_s4(nd);
-  NumericVector Ew_s5(nd);
-  NumericVector Iw_s1(nd);
-  NumericVector Iw_s2(nd);
-  NumericVector Iw_s3(nd);
-  NumericVector Iw_s4(nd);
-  NumericVector Iw_s5(nd);
-  NumericVector Uw_s1(nd);
-  NumericVector Uw_s2(nd);
-  NumericVector Uw_s3(nd);
-  NumericVector Uw_s4(nd);
-  NumericVector Uw_s5(nd);
-  NumericVector Rw_s1(nd);
-  NumericVector Rw_s2(nd);
-  NumericVector Rw_s3(nd);
-  NumericVector Rw_s4(nd);
-  NumericVector Rw_s5(nd);
-  NumericVector Iw_a1(nd);
-  NumericVector Iw_a2(nd);
-  NumericVector Iw_a3(nd);
-  NumericVector Iw_a4(nd);
-  NumericVector Iw_a5(nd);
-  NumericVector Iw_a6(nd);
-  NumericVector Iw_a7(nd);
-  NumericVector Iw_a8(nd);
-  NumericVector Iw_a9(nd);
-  NumericVector Uw_a1(nd);
-  NumericVector Uw_a2(nd);
-  NumericVector Uw_a3(nd);
-  NumericVector Uw_a4(nd);
-  NumericVector Uw_a5(nd);
-  NumericVector Uw_a6(nd);
-  NumericVector Uw_a7(nd);
-  NumericVector Uw_a8(nd);
-  NumericVector Uw_a9(nd);
+  //SE-stratified daily incidence: rows=day, cols=SE group (size nd x ns)
+  NumericMatrix Ew_s(nd, ns);
+  NumericMatrix Iw_s(nd, ns);
+  NumericMatrix Uw_s(nd, ns);
+  NumericMatrix Rw_s(nd, ns);
+  //age-stratified daily incidence: rows=day, cols=age group (size nd x na)
+  NumericMatrix Iw_a(nd, na);
+  NumericMatrix Uw_a(nd, na);
   
   int ig;
   double Sig, E1ig, E2ig, I1ig, I2ig, U1ig, U2ig, Rig, Dig;
@@ -340,95 +310,40 @@ List model(List parscpp) {
       //Uvw[day-1]  = Uvpw;  Uvpw=0; 
       //Rvw[day-1]  = Rvpw;  Rvpw=0; 
       //Cvcw[day-1] = Cvcpw; Cvcpw=0;
-      //SES
-      Ew_s1[day-1] = Epw_s[0]; Epw_s[0]=0;
-      Ew_s2[day-1] = Epw_s[1]; Epw_s[1]=0;
-      Ew_s3[day-1] = Epw_s[2]; Epw_s[2]=0;
-      Ew_s4[day-1] = Epw_s[3]; Epw_s[3]=0;
-      Ew_s5[day-1] = Epw_s[4]; Epw_s[4]=0;
-      Iw_s1[day-1] = Ipw_s[0]; Ipw_s[0]=0;
-      Iw_s2[day-1] = Ipw_s[1]; Ipw_s[1]=0;
-      Iw_s3[day-1] = Ipw_s[2]; Ipw_s[2]=0;
-      Iw_s4[day-1] = Ipw_s[3]; Ipw_s[3]=0;
-      Iw_s5[day-1] = Ipw_s[4]; Ipw_s[4]=0;
-      Uw_s1[day-1] = Upw_s[0]; Upw_s[0]=0;
-      Uw_s2[day-1] = Upw_s[1]; Upw_s[1]=0;
-      Uw_s3[day-1] = Upw_s[2]; Upw_s[2]=0;
-      Uw_s4[day-1] = Upw_s[3]; Upw_s[3]=0;
-      Uw_s5[day-1] = Upw_s[4]; Upw_s[4]=0;
-      Rw_s1[day-1] = Rpw_s[0]; Rpw_s[0]=0;
-      Rw_s2[day-1] = Rpw_s[1]; Rpw_s[1]=0;
-      Rw_s3[day-1] = Rpw_s[2]; Rpw_s[2]=0;
-      Rw_s4[day-1] = Rpw_s[3]; Rpw_s[3]=0;
-      Rw_s5[day-1] = Rpw_s[4]; Rpw_s[4]=0;
-      //age
-      Iw_a1[day-1] = Ipw_a[0]; Ipw_a[0]=0;
-      Iw_a2[day-1] = Ipw_a[1]; Ipw_a[1]=0;
-      Iw_a3[day-1] = Ipw_a[2]; Ipw_a[2]=0;
-      Iw_a4[day-1] = Ipw_a[3]; Ipw_a[3]=0;
-      Iw_a5[day-1] = Ipw_a[4]; Ipw_a[4]=0;
-      Iw_a6[day-1] = Ipw_a[5]; Ipw_a[5]=0;
-      Iw_a7[day-1] = Ipw_a[6]; Ipw_a[6]=0;
-      Iw_a8[day-1] = Ipw_a[7]; Ipw_a[7]=0;
-      Iw_a9[day-1] = Ipw_a[8]; Ipw_a[8]=0;
-      Uw_a1[day-1] = Upw_a[0]; Upw_a[0]=0;
-      Uw_a2[day-1] = Upw_a[1]; Upw_a[1]=0;
-      Uw_a3[day-1] = Upw_a[2]; Upw_a[2]=0;
-      Uw_a4[day-1] = Upw_a[3]; Upw_a[3]=0;
-      Uw_a5[day-1] = Upw_a[4]; Upw_a[4]=0;
-      Uw_a6[day-1] = Upw_a[5]; Upw_a[5]=0;
-      Uw_a7[day-1] = Upw_a[6]; Upw_a[6]=0;
-      Uw_a8[day-1] = Upw_a[7]; Upw_a[7]=0;
-      Uw_a9[day-1] = Upw_a[8]; Upw_a[8]=0;
+      //SES-stratified daily incidence
+      for (int is = 0; is < ns; is++) {
+        Ew_s(day-1, is) = Epw_s[is]; Epw_s[is] = 0;
+        Iw_s(day-1, is) = Ipw_s[is]; Ipw_s[is] = 0;
+        Uw_s(day-1, is) = Upw_s[is]; Upw_s[is] = 0;
+        Rw_s(day-1, is) = Rpw_s[is]; Rpw_s[is] = 0;
+      }
+      //age-stratified daily incidence
+      for (int ia = 0; ia < na; ia++) {
+        Iw_a(day-1, ia) = Ipw_a[ia]; Ipw_a[ia] = 0;
+        Uw_a(day-1, ia) = Upw_a[ia]; Upw_a[ia] = 0;
+      }
     }
 
   }; //it //////////////////////////////////////////////////////////////////////
 
   
-  Rcpp::DataFrame byw = Rcpp::DataFrame::create(
+  // byw: overall daily incidence vectors + SE-stratified matrices (nd x ns)
+  Rcpp::List byw = Rcpp::List::create(
     Named("iW")   = iW,
     Named("time") = time[iW],
-    //Named("St")   = St[iW],
-    //Named("Et")   = E1t[iW]+E2t[iW],
-    //Named("It")   = I1t[iW]+I2t[iW],
-    //Named("Ut")   = U1t[iW]+U2t[iW],
-    //Named("Dt")   = Dt[iW],
     Named("Sw")   = Sw,
     Named("Ew")   = Ew,
     Named("Iw")   = Iw,
     Named("Uw")   = Uw,
     Named("Dw")   = Dw,
-    //Named("Rw")   = Rw,
-    Named("Iw_s1")  = Iw_s1,
-    Named("Iw_s2")  = Iw_s2,
-    Named("Iw_s3")  = Iw_s3,
-    Named("Iw_s4")  = Iw_s4,
-    Named("Iw_s5")  = Iw_s5,
-    Named("IUw_s1") = Uw_s1+Iw_s1,
-    Named("IUw_s2") = Uw_s2+Iw_s2,
-    Named("IUw_s3") = Uw_s3+Iw_s3,
-    Named("IUw_s4") = Uw_s4+Iw_s4,
-    Named("IUw_s5") = Uw_s5+Iw_s5);
-    //Named("Ccw")  = Ccw);
-  Rcpp::DataFrame byaw = Rcpp::DataFrame::create(
-    Named("IUw_a1") = Uw_a1+Iw_a1,
-    Named("IUw_a2") = Uw_a2+Iw_a2,
-    Named("IUw_a3") = Uw_a3+Iw_a3,
-    Named("IUw_a4") = Uw_a4+Iw_a4,
-    Named("IUw_a5") = Uw_a5+Iw_a5,
-    Named("IUw_a6") = Uw_a6+Iw_a6,
-    Named("IUw_a7") = Uw_a7+Iw_a7,
-    Named("IUw_a8") = Uw_a8+Iw_a8,
-    Named("IUw_a9") = Uw_a9+Iw_a9,
-    Named("Iw_a1") = Iw_a1,
-    Named("Iw_a2") = Iw_a2,
-    Named("Iw_a3") = Iw_a3,
-    Named("Iw_a4") = Iw_a4,
-    Named("Iw_a5") = Iw_a5,
-    Named("Iw_a6") = Iw_a6,
-    Named("Iw_a7") = Iw_a7,
-    Named("Iw_a8") = Iw_a8,
-    Named("Iw_a9") = Iw_a9);
+    Named("Iw_s") = Iw_s,
+    Named("Uw_s") = Uw_s,
+    Named("Ew_s") = Ew_s,
+    Named("Rw_s") = Rw_s);
+  // byaw: age-stratified daily incidence matrices (nd x na)
+  Rcpp::List byaw = Rcpp::List::create(
+    Named("Iw_a") = Iw_a,
+    Named("Uw_a") = Uw_a);
 
   return Rcpp::List::create(Rcpp::Named("byw") = byw, Rcpp::Named("byaw") = byaw);
 }
