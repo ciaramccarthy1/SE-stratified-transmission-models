@@ -2,7 +2,7 @@
 
 Provenance for every file in `data/`. Files marked **auto-fetched** are
 downloaded by `codes/fetch_data.R` and cached locally. Files marked
-**generated** are produced by `codes/scaffold_10age_data.R` from
+**generated** are produced by `codes/prepare_model_inputs.R` from
 either raw or other inherited inputs.
 
 ---
@@ -19,7 +19,7 @@ either raw or other inherited inputs.
 ### `Mas50_urban.csv` — generated
 - **Description**: 50×50 wide contact matrix for the model's 10 age bands × 5 IMD, urban. `cm[i, j]` = mean contacts of contact-group `j` by participant-group `i`, where `ig = is*na + ia` (IMD-major).
 - **Inputs**: `base_matrix.csv`
-- **Generator**: `codes/scaffold_10age_data.R`
+- **Generator**: `codes/prepare_model_inputs.R`
 - **Aggregation method**:
   - Contact-side merge of {a₁, a₂} → A: **sum** of rates (a participant in I contacts both sub-bands).
   - Participant-side merge of {p₁, p₂} → P: **uniform mean** of rates (one participant in exactly one sub-band).
@@ -43,7 +43,7 @@ either raw or other inherited inputs.
 ### `demographics2021_10age.csv` — generated
 - **Description**: 10-band rebanding of `demographics2021.csv` aligned to the model's age bands (0–4, 5–14, 15–19, 20–29, 30–39, 40–49, 50–59, 60–64, 65–74, 75+).
 - **Inputs**: `demographics2021.csv`
-- **Generator**: `codes/scaffold_10age_data.R`
+- **Generator**: `codes/prepare_model_inputs.R`
 - **Method**: Linear-uniform splits within bands that don't align between the 9-band source and 10-band target. The 70+ source band is assumed to span 70–89 effectively (width 20) for splitting into 65–74 contributions and 75+.
 - **TODO**: Rebuild from ONS 5-year-band data for exact splits; remove the uniform-within-band assumption.
 
@@ -70,7 +70,7 @@ Each per-age vector currently inherits values from the 9-band era; band shifts a
 Rscript codes/fetch_data.R
 
 # Regenerate derived files from raw inputs:
-Rscript codes/scaffold_10age_data.R
+Rscript codes/prepare_model_inputs.R
 ```
 
 To force a re-download of any fetched file, delete it from `data/` first

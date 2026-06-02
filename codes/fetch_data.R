@@ -2,13 +2,18 @@
 # Download raw input data files for the SE-stratified transmission model.
 #
 # Files downloaded by this script (see data/SOURCES.md for full provenance):
-#   data/base_matrix.csv : age x IMD contact matrix (Reconnect survey,
-#                          16 five-year bands, 5 IMD quintiles, balanced)
-#                          Source: lucy-gf/imd_matrices repo
+#   data/base_matrix.csv                : age x IMD contact matrix
+#                                         (Reconnect survey via lucy-gf/imd_matrices)
+#   data/ons_lsoa_syoa_2022-2024.xlsx   : LSOA population by single year of age + sex
+#                                         (ONS mid-2022 to mid-2024)
+#   data/iod2025_lsoa_ranks_deciles.csv : LSOA -> IMD 2025 lookup
+#                                         (GOV.UK English Indices of Deprivation 2025)
+
 #
-# Files NOT auto-fetched (require manual sourcing - see data/SOURCES.md):
-#   data/demographics2021.csv  - ONS population, inherited from upstream;
-#                                rebuild method TODO
+# Downstream prep (NOT in this script): join ons_lsoa_syoa with iod2025_lsoa_ranks
+# on LSOA code, aggregate by IMD quintile and the 10 model age bands, write to
+# data/demographics2021_10age.csv. Currently prepare_model_inputs.R produces that
+# file from an inherited demographics2021.csv (different ONS pipeline).
 #
 ################################################################################
 
@@ -76,14 +81,6 @@ fetch_if_missing(
   expected_bytes = 1e6,
   label = "IoD 2025 LSOA ranks/scores/deciles + population denominators")
 
-# fetch_if_missing(
-#   url   = "TODO ONS: 2011 rural-urban classification by LSOA (still current)",
-#   path  = file.path(input_dir, "lsoa_ruc.csv"),
-#   label = "LSOA rural-urban classification")
-##
-## After downloading, a separate prep step (NOT this script) should join +
-## aggregate them into data/demographics2021_real.csv with the 10 model bands.
-
 ## --- Source-paper per-age parameter tables (RSV) ---------------------------
 ## Feeds: u, y, m, h, mH, rrep per age in parsR_.r / parsRv_.r.
 
@@ -114,41 +111,69 @@ fetch_if_missing(
 #   label = "Moderna mRESVIA VE")
 
 
-## --- UK vaccination programme uptake data ----------------------------------
-## Feeds: vcov in pars*v_.r files.
-## UKHSA / NHS England publish uptake periodically (Green Book + dashboards).
-# fetch_if_missing(
-#   url   = "TODO UKHSA/NHS England: RSV 75+ programme uptake (when reported)",
-#   path  = file.path(input_dir, "rsv_75plus_uptake.csv"),
-#   label = "RSV 75+ uptake by IMD/region")
-#
-# fetch_if_missing(
-#   url   = "TODO UKHSA annual flu vaccine uptake (clinical risk groups + 65+)",
-#   path  = file.path(input_dir, "flu_uptake.csv"),
-#   label = "Flu uptake by age")
-#
-# fetch_if_missing(
-#   url   = "TODO UKHSA COVID booster uptake by age + IMD",
-#   path  = file.path(input_dir, "covid_uptake.csv"),
-#   label = "COVID uptake by age")
+## --- England RSV vaccination uptake by IMD decile ---------------------
+## Source: UKHSA "RSV older adults vaccination coverage in England" report.
+## Updated periodically; URL below points to the January 2026 report.
+## Note: published table includes routine + catch-up cohorts. Routine cohort
+## uptake is currently lower than the all-cohort figure, so this will need
+## updating with cohort-specific values when separable.
+## Feeds: vcov in parsRv_.r (currently uniform 100% in band 10 / 75+ only).
+##
+## We download the HTML page and parse the IMD-decile uptake table from it.
+rsv_uptake_url  <- paste0("https://www.gov.uk/government/statistics/",
+                          "respiratory-syncytial-virus-rsv-older-adults-vaccination-coverage-in-england/",
+                          "respiratory-syncytial-virus-rsv-older-adults-vaccination-coverage-in-england-january-2026-report")
+rsv_uptake_html <- file.path(input_dir, "ukhsa_rsv_uptake_jan2026.html")
+fetch_if_missing(
+  url   = rsv_uptake_url,
+  path  = rsv_uptake_html,
+  expected_bytes = 1e5,
+  label = "UKHSA RSV uptake (Jan 2026 report)")
 
+rsv_uptake_csv <- file.path(input_dir, "rsv_uptake_by_imd_decile.csv")
+if (!file.exists(rsv_uptake_csv)) {
+  # Parse the IMD-decile uptake table from the cached HTML.
+  # The relevant block is a table whose body contains the unique header "Deprivation deciles".
+  .rsv_html <- paste(readLines(rsv_uptake_html, warn = FALSE), collapse = "\n")
+  # Extract all <table>...</table> blocks individually, then pick the one containing "Deprivation deciles".
+  .all_tables <- regmatches(.rsv_html,
+                            gregexpr("(?s)<table>.*?</table>", .rsv_html, perl = TRUE))[[1]]
+  .tbl_block  <- .all_tables[grepl("Deprivation deciles", .all_tables, fixed = TRUE)]
+  stopifnot(length(.tbl_block) == 1)
+  # 10 rows x 2 cells = 20 <td> contents, alternating decile / uptake_pct
+  .cells <- regmatches(.tbl_block,
+                       gregexpr("<td[^>]*>([^<]+)</td>", .tbl_block, perl = TRUE))[[1]]
+  .cells <- trimws(gsub("<[^>]+>", "", .cells))
+  stopifnot(length(.cells) == 20)
+  .rsv_uptake_df <- data.frame(
+    decile     = as.integer(sub(" .*", "", .cells[seq(1, 20, 2)])),
+    uptake_pct = as.numeric(.cells[seq(2, 20, 2)]))
+  write.csv(.rsv_uptake_df, rsv_uptake_csv, row.names = FALSE)
+  cat(sprintf("Parsed RSV uptake table from HTML: %d deciles -> %s\n",
+              nrow(.rsv_uptake_df), rsv_uptake_csv))
+  rm(.rsv_html, .tbl_block, .cells, .rsv_uptake_df)
+} else {
+  message(sprintf("Using cached %s (delete to re-parse from HTML)", rsv_uptake_csv))
+}
 
-## --- Hospital length-of-stay data ------------------------------------------
-## Feeds: rH per disease in pars*_.r files.
+## TO THINK ABOUT: Need uptake by quintile -> use population weighting once have popn/quintile (although they should be similar)
+
+## --- RSV hospital length-of-stay -------------------------------------------
+## Feeds: rH in parsR_.r / parsRv_.r (currently 1/6 placeholder).
 ## HES (Hospital Episode Statistics) is restricted; published reports give
-## aggregate LOS by ICD-10 code, age, and sometimes IMD.
+## aggregate RSV admission LOS by age and sometimes IMD.
 # fetch_if_missing(
-#   url   = "TODO NHS Digital HES respiratory admissions: LOS by age, ICD-10",
-#   path  = file.path(input_dir, "hes_resp_los.csv"),
-#   label = "HES respiratory LOS by age")
+#   url   = "TODO NHS Digital HES: RSV LOS by age",
+#   path  = file.path(input_dir, "hes_rsv_los.csv"),
+#   label = "HES RSV LOS by age")
 
 
-## --- Sub-band populations for population-weighted contact aggregation ------
-## Feeds: scaffold_10age_data.R participant-side aggregation (currently
-## uniform mean - TODO population-weighted).
-## If ONS demographics above are added at 5-year-band granularity, this
-## becomes a derived calculation rather than a separate fetch.
-# (no new fetch; uses ons_pop_lsoa.csv aggregated by 5-year bands)
+## --- Population-weighted contact aggregation -------------------------------
+## prepare_model_inputs.R currently aggregates contact rates participant-side
+## with uniform mean (TODO -> population-weighted). The ONS LSOA single-year-
+## of-age data fetched above is sufficient to derive the per-5-year-band
+## populations needed; just wire it into prepare_model_inputs.R rather than
+## fetching anything new.
 
 
 message("fetch_data.R: all raw inputs present and validated.")

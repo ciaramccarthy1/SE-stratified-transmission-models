@@ -1,31 +1,34 @@
 ################################################################################
-# Produces 10-age-band model inputs aligned with Reconnect survey
-# imd_matrices contact matrices (https://github.com/lucy-gf/imd_matrices).
+# Prepare derived 10-age-band model inputs from raw downloads.
+# Pairs with codes/fetch_data.R (which downloads the raw files).
 #
-# New 10-band model layout (cuts aligned with 5-year bands so no
-# fractional within-band splitting is needed):
+# Model age bands (cuts aligned with 5-year bands so no fractional within-band
+# splitting is needed):
 #   0-4, 5-14, 15-19, 20-29, 30-39, 40-49, 50-59, 60-64, 65-74, 75+
 #
-# Inputs:
-#   - data/base_matrix.csv         : Reconnect long-form 5-IMD x 16-age matrix
-#                                    (5 x 5 IMD pairs x 16 x 16 age cells = 6400 rows)
-#   - data/demographics2021.csv    : original 9-band ONS demographics
+# Inputs (sourced by fetch_data.R unless noted):
+#   - data/base_matrix.csv          : Reconnect long-form 5-IMD x 16-age matrix
+#                                     (5 x 5 IMD pairs x 16 x 16 age cells = 6400 rows)
+#   - data/demographics2021.csv     : original 9-band ONS demographics
+#                                     (inherited from upstream repo; not yet
+#                                     auto-fetched. TODO: replace with derived
+#                                     output from ONS LSOA SYA + IoD 2025 lookup,
+#                                     both already fetched by fetch_data.R.)
 #
 # Outputs:
-#   - data/Mas50_urban.csv         : 50x50 wide contact matrix
-#                                    (rows = participant ig = is*na + ia)
-#   - data/demographics2021_10age.csv : 10-band demographics
-#                                    (TODO: still scaffolded from 9-band source;
-#                                    replace with real ONS 10-band data)
+#   - data/Mas50_urban.csv          : 50x50 wide contact matrix
+#                                     (rows = participant ig = is*na + ia)
+#   - data/demographics2021_10age.csv : 10-band demographics, urban+rural summed
+#                                     into a single row per (IMD, age)
 #
 # Aggregation notes for the contact matrix:
-#   Participant-side merge of {a1, a2} -> A is a population-weighted average
+#   Participant-side merge of {a1, a2} -> A: population-weighted average
 #     (one participant is in exactly one sub-band, so we average rates).
-#   Contact-side merge of {b1, b2} -> B is a SUM
+#   Contact-side merge of {b1, b2} -> B: SUM
 #     (a participant in A makes contacts with both sub-bands; counts add).
 #   TODO: currently using UNIFORM weights on the participant side
 #     (i.e. simple mean over sub-bands). Replace with population-weighted
-#     means using real ONS sub-band populations when available.
+#     means using ONS LSOA SYA data (already fetched by fetch_data.R).
 ################################################################################
 
 input_dir  <- file.path("data")
