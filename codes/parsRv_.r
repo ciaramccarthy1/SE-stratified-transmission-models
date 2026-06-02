@@ -47,8 +47,7 @@ pars <- within(pars, {
     na     <- 10              #number of age groups
     nimd   <- 5               #number of SE groups
     urban  <- T               #area: urban (T), rural (F)
-    # TODO(10-age scaffold): old 60-69 split 50/50 -> 60-64 + half of 65-74; old 70+ split 5:15 -> half of 65-74 + 75+. Replace with ONS source.
-    ageons <- c(0.0466, 0.0873, 0.0693, 0.14997, 0.1337, 0.1258, 0.1351, 0.1058/2, 0.1058/2 + 0.1358/4, 0.1358*3/4); ageons=ageons/sum(ageons) #2020 mid
+    # ageons (age proportions) is now computed in modelrun.r from demographics2021_10age.csv
     
     #natural history
     #see also Reis and Sharma 2016, 2018 (consistent parameters, but simpler model)
@@ -84,8 +83,9 @@ pars <- within(pars, {
     #  VE_mort  - efficacy against mortality given hospitalised (reduces H_v -> D)
     #  rW     - vaccine waning rate V -> S (per day)
     #  rW_nat - natural waning rate R/Rv -> S (per day); 0 disables
-    # TODO(V scaffold): all VEs uniform across (age, IMD) at 0.5; coverage 1.0; review for RSV 75+ programme.
-    vc      <- rep(1, na)                #per-age coverage placeholder
+    # UK RSV programme: 75+ band only, 100% uptake (placeholder; real coverage TBD).
+    # vc length-na: zeros except band 10 (75+).
+    vc      <- c(rep(0, na - 1), 1)
     vcov    <- rep(vc, nimd)             #per (age x IMD), length ng
     VE_inf  <- rep(0.0, na*nimd)         #placeholder: no infection blocking
     VE_sym  <- rep(0.5, na*nimd)         #placeholder

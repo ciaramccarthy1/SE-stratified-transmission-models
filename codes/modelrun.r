@@ -65,11 +65,10 @@ ng   = na*nimd
 urb  = pars$urban #urban (T), rural (F)
 if(pars$urb==T){ area = "Urban"} else { area ="Rural"}
 print(paste0("Area: ", area))
-# proportion by age
+# proportion by age (overall, summed across IMD and urban/rural)
 pa<-vector(); for (i in 1:na){pa[i]=sum(demog2021$Population[which(demog2021$Age==pars$ages[i])])/sum(demog2021$Population)}
-#  check:
-#  round(pa,4)          [1] 0.0573 0.0873 0.0693 0.1500 0.1337 0.1258 0.1351 0.1058 0.1358
-#  round(pars$ageons,4) [1] 0.0471 0.0882 0.0700 0.1516 0.1351 0.1272 0.1366 0.1069 0.1373
+# Assign back into pars so anything reading pars$ageons gets the CSV-derived value
+pars$ageons <- pa
 
 
 ## Initial state: S, E1:2, I1:2, U1:2, R, D
