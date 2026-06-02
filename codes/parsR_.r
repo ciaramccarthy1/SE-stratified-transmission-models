@@ -22,7 +22,7 @@ pars <- within(pars, {
     #Mortality fraction (in hospital)
     #m    <-
 
-    age = c(mean(0:4),mean(5:11),mean(12:17),mean(18:29),mean(30:39),mean(40:49),mean(50:59),mean(60:64),mean(65:74),mean(75:90))
+    age = c(mean(0:4),mean(5:14),mean(15:19),mean(20:29),mean(30:39),mean(40:49),mean(50:59),mean(60:64),mean(65:74),mean(75:90))
 
     #Mortality fraction if clinically infected - derived and age-adjusted from IFR/y in Hodgson 2020
     # TODO(10-age scaffold): 60-64 inherits old 60-69; 65-74 mean(old 60-69, 70+); 75+ inherits old 70+
@@ -49,7 +49,7 @@ pars <- within(pars, {
     nd     <- ceiling((max(times)-min(times)))+1   #days length of model run
     
     #demography
-    ages   <- c("0 to 4","5 to 11","12 to 17","18 to 29","30 to 39","40 to 49","50 to 59","60 to 64","65 to 74","75+")
+    ages   <- c("0 to 4","5 to 14","15 to 19","20 to 29","30 to 39","40 to 49","50 to 59","60 to 64","65 to 74","75+")
     na     <- 10              #number of age groups
     nimd   <- 5               #number of SE groups
     urban  <- T               #area: urban (T), rural (F)
