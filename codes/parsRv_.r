@@ -28,6 +28,12 @@ pars <- within(pars, {
     # TODO(10-age scaffold): 60-64 inherits old 60-69; 65-74 mean(old 60-69, 70+); 75+ inherits old 70+
     m <- c(0.002609698, 0.001407748, 0.165154365, 0.405802227, 0.405802227, 0.405802227, 0.405802227, 0.405802227,
     0.405802227, 0.405802227)
+
+    #Hospitalisation pathway (H compartment): I2 -> H at rate h*rI2R; H -> D at rate mH*rH; H -> R at rate (1-mH)*rH
+    # TODO(H scaffold): placeholder h = pmin(10*m, 0.8); mH = m/h so total mortality given clinical preserved.
+    h  <- pmin(10*m, 0.8)
+    mH <- m / h
+    rH <- 1/6                     #1/hospital stay length (days^-1); TODO use RSV-specific value
 	
     #temporal
     dt     <- 0.1             #0.01 #time step (days)
@@ -69,13 +75,25 @@ pars <- within(pars, {
     # TODO(10-age scaffold): 60-64 inherits old 60-69; 65-74 mean of old 60-69 & 70+; 75+ inherits old 70+
     rrep <- c(0.0023321, 0.0000305, 0.0000305, 0.0000305, 0.0000305, 0.0000305, 0.0000888, 0.000147, 0.000147, 0.000147)
 
-    #vaccines
-    ve   <- rep(0.5, na)        #efficacy 0.5
-    veff <- rep(ve,  nimd)
-    vc   <- rep(1, na)          #coverage 0.1
-    vcov <- rep(vc,  nimd)
-    vcln <- 0.15                #reduction in clinical fraction
-    rV   <- 1/180               #rate of immunisation
+    #vaccines: leaky V compartment with breakthrough shadow chain (V/Ev/Iv/Uv/Hv/Rv/Dv)
+    #  rV   - vaccination rate (per day) for fully eligible
+    #  vcov - eligibility/coverage fraction per (age x IMD), length ng
+    #  VE_inf  - efficacy against infection (reduces FOI on V)
+    #  VE_sym  - efficacy against symptoms (reduces E2_v -> I1_v vs U1_v clinical fork)
+    #  VE_hosp - efficacy against hospitalisation (reduces I2_v -> H_v)
+    #  VE_sev  - efficacy against mortality given hospitalised (reduces H_v -> D)
+    #  rW     - vaccine waning rate V -> S (per day)
+    #  rW_nat - natural waning rate R/Rv -> S (per day); 0 disables
+    # TODO(V scaffold): all VEs uniform across (age, IMD) at 0.5; coverage 1.0; review for RSV 75+ programme.
+    vc      <- rep(1, na)                #per-age coverage placeholder
+    vcov    <- rep(vc, nimd)             #per (age x IMD), length ng
+    VE_inf  <- rep(0.0, na*nimd)         #placeholder: no infection blocking
+    VE_sym  <- rep(0.5, na*nimd)         #placeholder
+    VE_hosp <- rep(0.7, na*nimd)         #placeholder
+    VE_sev  <- rep(0.5, na*nimd)         #placeholder
+    rV      <- 1/180                     #rate of immunisation (per day)
+    rW      <- 1/365                     #vaccine waning rate (1/year); TODO source-paper value
+    rW_nat  <- 0                         #natural waning rate; default 0 (lifelong post-infection immunity)
     
 })
 

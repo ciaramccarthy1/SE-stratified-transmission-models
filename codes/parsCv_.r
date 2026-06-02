@@ -28,6 +28,12 @@ pars <- within(pars, {
     #Mortality fraction if clinically infected (derived from Verity 2020 IFR and sh est)
     # TODO(10-age scaffold): 60-64 inherits old 60-69; 65-74 mean(old 60-69, 70+); 75+ inherits old 70+
     m <- c(0.000056, 0.000116, 0.000348, 0.001210, 0.003327, 0.005627, 0.018450, 0.053066, (0.053066+0.139813)/2, 0.139813)
+
+    #Hospitalisation pathway (H compartment): I2 -> H at rate h*rI2R; H -> D at rate mH*rH; H -> R at rate (1-mH)*rH
+    # TODO(H scaffold): placeholder h = pmin(10*m, 0.8); mH = m/h so total mortality given clinical preserved.
+    h  <- pmin(10*m, 0.8)
+    mH <- m / h
+    rH <- 1/6                     #1/hospital stay length (days^-1); TODO use COVID-specific value
     
     #temporal
     dt     <- 0.1             #time step (days)
@@ -65,13 +71,17 @@ pars <- within(pars, {
     #rate of reporting by age #Assumed
     rrep <- rep(0.5, na)
 
-    #vaccines
-    ve   <- rep(0.5, na)        #efficacy 0.5
-    veff <- rep(ve,  nimd)
-    vc   <- rep(1, na)          #coverage 0.1
-    vcov <- rep(vc,  nimd)
-    vcln <- 0.15                #reduction in clinical fraction
-    rV   <- 1/180               #rate of immunisation
+    #vaccines: leaky V compartment with breakthrough shadow chain (V/Ev/Iv/Uv/Hv/Rv/Dv)
+    # TODO(V scaffold): all VEs uniform across (age, IMD) at placeholder values; review for COVID programme.
+    vc      <- rep(1, na)
+    vcov    <- rep(vc, nimd)
+    VE_inf  <- rep(0.0, na*nimd)         #placeholder: no infection blocking
+    VE_sym  <- rep(0.5, na*nimd)         #placeholder
+    VE_hosp <- rep(0.7, na*nimd)         #placeholder
+    VE_sev  <- rep(0.5, na*nimd)         #placeholder
+    rV      <- 1/180                     #rate of immunisation (per day)
+    rW      <- 1/365                     #vaccine waning rate (1/year); TODO source-paper value
+    rW_nat  <- 0                         #natural waning rate; default 0
     
 })
 

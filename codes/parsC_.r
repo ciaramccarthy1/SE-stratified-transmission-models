@@ -28,6 +28,16 @@ pars <- within(pars, {
     #Mortality fraction if clinically infected (derived from Verity 2020 IFR and sh est)
     # TODO(10-age scaffold): 60-64 inherits old 60-69; 65-74 mean(old 60-69, 70+); 75+ inherits old 70+
     m <- c(0.000056, 0.000116, 0.000348, 0.001210, 0.003327, 0.005627, 0.018450, 0.053066, (0.053066+0.139813)/2, 0.139813)
+
+    #Hospitalisation pathway (H compartment): I2 -> H at rate h*rI2R; H -> D at rate mH*rH; H -> R at rate (1-mH)*rH
+    # TODO(H scaffold): placeholder h = pmin(10*m, 0.8); mH = m/h so total mortality given clinical preserved.
+    # Replace with literature values (e.g. Verity 2020 / Knock 2021 hospitalisation rates).
+    h  <- pmin(10*m, 0.8)
+    mH <- m / h
+    rH <- 1/6                     #1/hospital stay length (days^-1); TODO use COVID-specific value
+
+    #Natural waning of post-infection immunity (R -> S); 0 = lifelong (default for single-season)
+    rW_nat <- 0
     
     #temporal
     dt     <- 0.1             #time step (days)

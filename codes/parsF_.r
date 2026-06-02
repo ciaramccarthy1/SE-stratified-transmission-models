@@ -28,6 +28,16 @@ pars <- within(pars, {
     IFR <- c(0.000053, 0.000008, 0.000008, 0.000116, 0.000137, 0.000137, 0.000137, 0.002690, (0.002690+0.005243)/2, 0.005243)
     m <- IFR/y
 
+    #Hospitalisation pathway (H compartment): I2 -> H at rate h*rI2R; H -> D at rate mH*rH; H -> R at rate (1-mH)*rH
+    # TODO(H scaffold): placeholder h = pmin(10*m, 0.8); mH = m/h so total mortality given clinical preserved.
+    # Replace with literature values for influenza (e.g. Baguelin 2013 hospitalisation rates).
+    h  <- pmin(10*m, 0.8)
+    mH <- m / h
+    rH <- 1/6                     #1/hospital stay length (days^-1); TODO use flu-specific value
+
+    #Natural waning of post-infection immunity (R -> S); 0 = lifelong (default for single-season)
+    rW_nat <- 0
+
     #temporal
     dt     <- 0.1             #0.01 #time step (days)
     times  <- 0:180 #365      #days sequence

@@ -113,9 +113,10 @@ print(paste0("Assuming R0 = ", pars$R0 ,"... beta is ", round(betanew,4)) )
 
 
 ## Parameters
+# Note: pars already contains h, mH, rH (and for vacc: vcov, VE_inf/sym/hosp/sev, rV, rW, rW_nat) - they flow through via within().
 parscpp45 = within(parscpp45 <- pars, {
-                 cm=as.vector(cm45); cmdim1=cm45dim1; mI=pars$m; beta=betanew;
-                 Sg0=Sg0; E1g0=E1g0; I1g0=I1g0; I2g0=I2g0; U1g0=U1g0; U2g0=U2g0; 
+                 cm=as.vector(cm45); cmdim1=cm45dim1; beta=betanew;
+                 Sg0=Sg0; E1g0=E1g0; I1g0=I1g0; I2g0=I2g0; U1g0=U1g0; U2g0=U2g0;
                  Rg0=Rg0; Dg0=Dg0; oNg=oNg })
 #  for output
 parsum = parscpp45
@@ -327,7 +328,10 @@ print(paste0("infectious clinical (rI2R), days:    ", 1/parsum$rI2R))
 print(paste0("relative subclinical infectiousness: ", parsum$f))
 print(paste0("susceptibility by age     : ")); print(parsum$u)
 print(paste0("clinical  fraction by age : ")); print(parsum$y)
-print(paste0("mortality fraction by age : ")); print(parsum$mI)
+print(paste0("mortality fraction (overall, given clinical) by age : ")); print(parsum$m)
+print(paste0("hospitalisation fraction (given clinical) by age    : ")); print(parsum$h)
+print(paste0("mortality fraction (given hospitalised)    by age   : ")); print(parsum$mH)
+print(paste0("hospital stay length, days                          : ", round(1/parsum$rH,2)))
 
 cat("\n Initial condition \n");
 print(paste0("Initial latent proportion pE1g0: ")); print(as.numeric(parsum$pE1g0))
@@ -348,10 +352,14 @@ print(paste0("Contact matrix: ")); #cm
 
 if (pset$Vaccination==1){
 cat("\n Vaccination \n")
-print(paste0("Coverage:         ")); print(parsum$vcov)
-print(paste0("Efficacy:         ")); print(parsum$veff)
-print(paste0("Vaccination rate: ", round(parsum$rV,5)))
-print(paste0("Reduce clin frac: ", round(parsum$vcln,5))) }
+print(paste0("Coverage (per age x IMD):     ")); print(parsum$vcov)
+print(paste0("VE against infection:         ")); print(parsum$VE_inf)
+print(paste0("VE against symptoms:          ")); print(parsum$VE_sym)
+print(paste0("VE against hospitalisation:   ")); print(parsum$VE_hosp)
+print(paste0("VE against mortality (in H):  ")); print(parsum$VE_sev)
+print(paste0("Vaccination rate (per day):   ", round(parsum$rV,5)))
+print(paste0("Vaccine waning rate (per day):", round(parsum$rW,5)))
+print(paste0("Natural waning rate (per day):", round(parsum$rW_nat,5))) }
 
 
 cat("\n")

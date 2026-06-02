@@ -28,6 +28,18 @@ pars <- within(pars, {
     # TODO(10-age scaffold): 60-64 inherits old 60-69; 65-74 mean(old 60-69, 70+); 75+ inherits old 70+
     m <- c(0.002609698, 0.001407748, 0.165154365, 0.405802227, 0.405802227, 0.405802227, 0.405802227, 0.405802227,
     0.405802227, 0.405802227)
+
+    #Hospitalisation pathway (H compartment): I2 -> H at rate h*rI2R; H -> D at rate mH*rH; H -> R at rate (1-mH)*rH
+    # TODO(H scaffold): h (hospitalisation fraction given clinical) and mH (mortality given hospitalised) - placeholder derivation:
+    #   h  = pmin(10*m, 0.8)      (assume hospitalisation roughly 10x mortality, capped)
+    #   mH = m / h                (so overall mortality given clinical = h*mH = m, preserving the legacy m semantics)
+    # Replace h and mH with literature values when available (e.g. Hodgson 2020 hospitalisation rates).
+    h  <- pmin(10*m, 0.8)
+    mH <- m / h
+    rH <- 1/6                     #1/hospital stay length (days^-1); TODO use RSV-specific value
+
+    #Natural waning of post-infection immunity (R -> S); 0 = lifelong (default for single-season)
+    rW_nat <- 0
 	
     #temporal
     dt     <- 0.1             #0.01 #time step (days)
