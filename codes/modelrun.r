@@ -13,15 +13,15 @@ require(tidyverse)
 
 
 ### folders
-input_dir0 <- getwd()
-input_dir  <- paste0(getwd(),"/data")
+input_dir0 <- here()
+input_dir  <- here("data")
 if (pset$platform=="repo"){
-source_dir <- paste0(getwd(),"/codes")
-output_dir <- paste0(getwd(),"/output")
+source_dir <- here("codes")
+output_dir <- here("output")
 TODAY      <- pset$TODAY
 } else {
-source_dir <- paste0(getwd())
-output_dir <- paste0(getwd())
+source_dir <- here()
+output_dir <- here()
 TODAY      <- format(Sys.Date(), "%d-%m-%Y")
 }
 

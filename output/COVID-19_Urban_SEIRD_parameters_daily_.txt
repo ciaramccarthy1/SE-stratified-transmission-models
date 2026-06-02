@@ -1,7 +1,7 @@
 
 
  Iw peak 
-[1] "Peak:  0.299 million at 90 days"
+[1] "Peak:  0.299 million at 95 days"
 
  Study 
 [1] "Disease:    COVID-19"

@@ -44,7 +44,9 @@ expand_block <- function(b) {
   pop_75p   <- pop_70p   * (15 / 20)
   pop_65_74 <- pop_65_69 + pop_70_74
 
-  new <- b[1:10, ]
+
+# Explicitly create 10 rows by duplicating row 9 as a scaffold for the new bands
+new <- rbind(b, b[9, ])  # 10 rows; last 3 will be overwritten
   new$Age <- new_ages
   # 1..7 unchanged
   new$Population[1:7] <- b$Population[1:7]
