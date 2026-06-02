@@ -80,7 +80,7 @@ pars <- within(pars, {
     VE_inf  <- rep(0.0, na*nimd)         #placeholder: no infection blocking
     VE_sym  <- rep(0.5, na*nimd)         #placeholder
     VE_hosp <- rep(0.7, na*nimd)         #placeholder
-    VE_sev  <- rep(0.5, na*nimd)         #placeholder
+    VE_mort  <- rep(0.5, na*nimd)         #placeholder
     rV      <- 1/180                     #rate of immunisation (per day)
     rW      <- 1/365                     #vaccine waning rate (1/year); TODO source-paper value
     rW_nat  <- 0                         #natural waning rate; default 0

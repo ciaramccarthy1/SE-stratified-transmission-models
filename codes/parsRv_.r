@@ -81,7 +81,7 @@ pars <- within(pars, {
     #  VE_inf  - efficacy against infection (reduces FOI on V)
     #  VE_sym  - efficacy against symptoms (reduces E2_v -> I1_v vs U1_v clinical fork)
     #  VE_hosp - efficacy against hospitalisation (reduces I2_v -> H_v)
-    #  VE_sev  - efficacy against mortality given hospitalised (reduces H_v -> D)
+    #  VE_mort  - efficacy against mortality given hospitalised (reduces H_v -> D)
     #  rW     - vaccine waning rate V -> S (per day)
     #  rW_nat - natural waning rate R/Rv -> S (per day); 0 disables
     # TODO(V scaffold): all VEs uniform across (age, IMD) at 0.5; coverage 1.0; review for RSV 75+ programme.
@@ -90,7 +90,7 @@ pars <- within(pars, {
     VE_inf  <- rep(0.0, na*nimd)         #placeholder: no infection blocking
     VE_sym  <- rep(0.5, na*nimd)         #placeholder
     VE_hosp <- rep(0.7, na*nimd)         #placeholder
-    VE_sev  <- rep(0.5, na*nimd)         #placeholder
+    VE_mort  <- rep(0.5, na*nimd)         #placeholder
     rV      <- 1/180                     #rate of immunisation (per day)
     rW      <- 1/365                     #vaccine waning rate (1/year); TODO source-paper value
     rW_nat  <- 0                         #natural waning rate; default 0 (lifelong post-infection immunity)

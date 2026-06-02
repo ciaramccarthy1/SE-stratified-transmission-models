@@ -22,7 +22,7 @@ List model(List parscpp) {
   const NumericVector VE_inf( parscpp["VE_inf"]);
   const NumericVector VE_sym( parscpp["VE_sym"]);
   const NumericVector VE_hosp(parscpp["VE_hosp"]);
-  const NumericVector VE_sev( parscpp["VE_sev"]);
+  const NumericVector VE_mort( parscpp["VE_mort"]);
   const double rV(     parscpp["rV"]);
   const double rW(     parscpp["rW"]);
   const double rW_nat( parscpp["rW_nat"]);
@@ -139,7 +139,7 @@ List model(List parscpp) {
       ve_i  = VE_inf[ig];
       ve_y  = VE_sym[ig];
       ve_h  = VE_hosp[ig];
-      ve_m  = VE_sev[ig];
+      ve_m  = VE_mort[ig];
 
       Sat  =  S_0[ig];
       E1at = E1_0[ig]; E2at = E2_0[ig];

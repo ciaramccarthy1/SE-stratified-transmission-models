@@ -356,7 +356,7 @@ print(paste0("Coverage (per age x IMD):     ")); print(parsum$vcov)
 print(paste0("VE against infection:         ")); print(parsum$VE_inf)
 print(paste0("VE against symptoms:          ")); print(parsum$VE_sym)
 print(paste0("VE against hospitalisation:   ")); print(parsum$VE_hosp)
-print(paste0("VE against mortality (in H):  ")); print(parsum$VE_sev)
+print(paste0("VE against mortality (in H):  ")); print(parsum$VE_mort)
 print(paste0("Vaccination rate (per day):   ", round(parsum$rV,5)))
 print(paste0("Vaccine waning rate (per day):", round(parsum$rW,5)))
 print(paste0("Natural waning rate (per day):", round(parsum$rW_nat,5))) }

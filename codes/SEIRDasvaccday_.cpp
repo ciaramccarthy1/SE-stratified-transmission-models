@@ -4,7 +4,7 @@
 //   VE_inf  - reduces susceptibility of V (leaky)
 //   VE_sym  - reduces clinical fraction (E2_v -> I1_v vs U1_v)
 //   VE_hosp - reduces hospitalisation fraction (I2_v -> H_v vs R_v)
-//   VE_sev  - reduces mortality given hospitalised (H_v -> D vs R_v)
+//   VE_mort  - reduces mortality given hospitalised (H_v -> D vs R_v)
 //
 // Compartments per (age x IMD):
 //   Unvacc: S, E1, E2, I1, I2, H, U1, U2, R, D
@@ -45,7 +45,7 @@ List model(List parscpp) {
   const NumericVector VE_inf( parscpp["VE_inf"]);  //efficacy against infection, length ng
   const NumericVector VE_sym( parscpp["VE_sym"]);  //efficacy against symptoms, length ng
   const NumericVector VE_hosp(parscpp["VE_hosp"]); //efficacy against hospitalisation, length ng
-  const NumericVector VE_sev( parscpp["VE_sev"]);  //efficacy against mortality given hosp, length ng
+  const NumericVector VE_mort( parscpp["VE_mort"]);  //efficacy against mortality given hosp, length ng
   const double rV(     parscpp["rV"]);             //vacc rate (per day)
   const double rW(     parscpp["rW"]);             //vaccine waning rate V -> S
   const double rW_nat( parscpp["rW_nat"]);         //natural waning rate R/Rv -> S (0 disables)
@@ -176,7 +176,7 @@ List model(List parscpp) {
       ve_i  = VE_inf[ig];
       ve_y  = VE_sym[ig];
       ve_h  = VE_hosp[ig];
-      ve_m  = VE_sev[ig];
+      ve_m  = VE_mort[ig];
 
       Sat  =  S_0[ig];
       E1at = E1_0[ig]; E2at = E2_0[ig];
