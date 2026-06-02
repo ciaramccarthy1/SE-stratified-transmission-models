@@ -51,7 +51,7 @@ pars <- within(pars, {
     na     <- 10              #number of age groups
     nimd   <- 5               #number of SE groups
     urban  <- T               #area: urban (T), rural (F)
-    # ageons (age proportions) is now computed in modelrun.r from demographics2021_10age.csv
+    # ageons (age proportions) is now computed in modelrun.r from demographics_10age.csv
     
     #natural history            
     rEI    <- 1/3             #latency = rEU, Davies 2020 Nat Med

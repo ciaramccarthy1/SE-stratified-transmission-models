@@ -10,10 +10,9 @@
 #                                         (GOV.UK English Indices of Deprivation 2025)
 
 #
-# Downstream prep (NOT in this script): join ons_lsoa_syoa with iod2025_lsoa_ranks
-# on LSOA code, aggregate by IMD quintile and the 10 model age bands, write to
-# data/demographics2021_10age.csv. Currently prepare_model_inputs.R produces that
-# file from an inherited demographics2021.csv (different ONS pipeline).
+# Downstream prep is done by codes/prepare_model_inputs.R: it joins
+# ons_lsoa_syoa with iod2025_lsoa_ranks on LSOA code, aggregates to IMD
+# quintile x model age bands, and writes data/demographics_10age.csv.
 #
 ################################################################################
 

@@ -31,8 +31,8 @@ TODAY      <- format(Sys.Date(), "%d-%m-%Y")
 
 
 ## Contact matrix (square, ng x ng where ng = na*nimd)
-# TODO(10-age scaffold): Mas50_urban.csv was generated from Mas45_urban.csv by codes/prepare_model_inputs.R - replace with real 50x50 augmented Polymod matrix
-cm45<-(as.matrix(read.csv(paste0(input_dir,"/Mas50_urban.csv"),header=F))) # removes name of columns
+# Built from Reconnect base_matrix.csv by codes/prepare_model_inputs.R.
+cm45<-(as.matrix(read.csv(paste0(input_dir,"/Mas50.csv"),header=F))) # removes name of columns
 cm45dim1 = dim(cm45)[1]
 
 
@@ -53,8 +53,8 @@ print(paste0("Incidence  : ", pars$Incidence))
 
 
 ## Demography
-# TODO(10-age scaffold): demographics2021_10age.csv generated from demographics2021.csv by codes/prepare_model_inputs.R - replace with real ONS 10-band data
-demog2021 <- read.csv(paste0(input_dir,"/demographics2021_10age.csv"),header=T)
+# Built from ONS LSOA SYA + IoD 2025 by codes/prepare_model_inputs.R.
+demog2021 <- read.csv(paste0(input_dir,"/demographics_10age.csv"),header=T)
 # number of age groups
 na   = pars$na
 # number of SES

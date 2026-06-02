@@ -2,8 +2,8 @@
 
 Provenance for every file in `data/`. Files marked **auto-fetched** are
 downloaded by `codes/fetch_data.R` and cached locally. Files marked
-**generated** are produced by `codes/prepare_model_inputs.R` from
-either raw or other inherited inputs.
+**generated** are produced by `codes/prepare_model_inputs.R` from those
+raw inputs.
 
 ---
 
@@ -16,36 +16,49 @@ either raw or other inherited inputs.
 - **Fetched by**: `codes/fetch_data.R`
 - **Notes**: Already balanced for reciprocity in the source repo.
 
-### `Mas50_urban.csv` — generated
-- **Description**: 50×50 wide contact matrix for the model's 10 age bands × 5 IMD, urban. `cm[i, j]` = mean contacts of contact-group `j` by participant-group `i`, where `ig = is*na + ia` (IMD-major).
+### `Mas50.csv` — generated
+- **Description**: 50×50 wide contact matrix for the model's 10 age bands × 5 IMD. `cm[i, j]` = mean contacts of contact-group `j` by participant-group `i`, where `ig = is*na + ia` (IMD-major).
 - **Inputs**: `base_matrix.csv`
 - **Generator**: `codes/prepare_model_inputs.R`
 - **Aggregation method**:
   - Contact-side merge of {a₁, a₂} → A: **sum** of rates (a participant in I contacts both sub-bands).
   - Participant-side merge of {p₁, p₂} → P: **uniform mean** of rates (one participant in exactly one sub-band).
-  - **TODO**: participant-side should be population-weighted using ONS sub-band populations.
-
-### `Mas45_urban.csv` — legacy, inherited
-- **Description**: 45×45 wide contact matrix for the old 9-band structure. Age bands: 0–4, 5–11, 12–17, 18–25, 26–34, 35–49, 50–69, 70–79, 80+.
-- **Source**: Inherited from upstream `JAN-Filipe/SE-stratified-transmission-models`. **Original provenance unknown** — predates this fork. Likely Polymod-derived but augmented for IMD; the augmentation methodology is undocumented.
-- **Status**: No longer used by the 10-band model — kept for reference / diff comparison.
+  - **TODO**: participant-side should be population-weighted using ONS sub-band populations (already fetched as `ons_lsoa_syoa_2022-2024.xlsx`; just wire into `prepare_model_inputs.R`).
 
 ---
 
 ## Demographics
 
-### `demographics2021.csv` — legacy, inherited
-- **Description**: Population by age × IMD × urban/rural for England, 2021. 9 age bands: 0–4, 5–11, 12–17, 18–29, 30–39, 40–49, 50–59, 60–69, 70+. Columns: `Age, IMD, rural, Population, tot_pop, Proportion`.
-- **Source**: Inherited from upstream `JAN-Filipe/SE-stratified-transmission-models`. **Original provenance unknown** — likely derived from ONS 2021 Census small-area data combined with LSOA-IMD lookups and LSOA-urban/rural classification, but the build pipeline is undocumented.
-- **Status**: Used only as input to the scaffold script for the 10-band rebanding.
-- **TODO**: Rebuild from primary ONS sources for traceability; document the LSOA → IMD → urban/rural lookups used.
+### `ons_lsoa_syoa_2022-2024.xlsx` — auto-fetched
+- **Description**: ONS LSOA-level population by single year of age (0–90+) and sex, mid-2022 through mid-2024. One sheet per year; `prepare_model_inputs.R` uses the Mid-2024 sheet.
+- **Source**: [ONS — Lower super output area mid-year population estimates](https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationestimates/datasets/lowersuperoutputareamidyearpopulationestimates).
+- **Fetched by**: `codes/fetch_data.R`
 
-### `demographics2021_10age.csv` — generated
-- **Description**: 10-band rebanding of `demographics2021.csv` aligned to the model's age bands (0–4, 5–14, 15–19, 20–29, 30–39, 40–49, 50–59, 60–64, 65–74, 75+).
-- **Inputs**: `demographics2021.csv`
+### `iod2025_lsoa_ranks_deciles.csv` — auto-fetched
+- **Description**: English Indices of Deprivation 2025, File 7. Per LSOA: all 7 IMD domain ranks/scores/deciles plus population denominators. Decile 1 = most deprived.
+- **Source**: [GOV.UK — English indices of deprivation 2025](https://www.gov.uk/government/statistics/english-indices-of-deprivation-2025), File 7.
+- **Fetched by**: `codes/fetch_data.R`
+
+### `demographics_10age.csv` — generated
+- **Description**: Population by IMD quintile × 10 model age bands (0–4, 5–14, 15–19, 20–29, 30–39, 40–49, 50–59, 60–64, 65–74, 75+). One row per (IMD, age) cell; columns `Age, IMD, Population, tot_pop, Proportion`.
+- **Inputs**: `ons_lsoa_syoa_2022-2024.xlsx` (Mid-2024 sheet), `iod2025_lsoa_ranks_deciles.csv`.
 - **Generator**: `codes/prepare_model_inputs.R`
-- **Method**: Linear-uniform splits within bands that don't align between the 9-band source and 10-band target. The 70+ source band is assumed to span 70–89 effectively (width 20) for splitting into 65–74 contributions and 75+.
-- **TODO**: Rebuild from ONS 5-year-band data for exact splits; remove the uniform-within-band assumption.
+- **Method**: Sum female + male at each single year of age per LSOA; bin into model age bands; join LSOAs to IMD deciles; convert decile → quintile (`ceiling(decile/2)`); aggregate population by (quintile, band). Inner join keeps the ~33.7k English LSOAs present in both sources.
+
+---
+
+## RSV vaccination uptake
+
+### `ukhsa_rsv_uptake_jan2026.html` — auto-fetched
+- **Description**: Raw HTML of the UKHSA "Respiratory Syncytial Virus (RSV) older adults vaccination coverage in England" January 2026 report.
+- **Source**: [GOV.UK — RSV older adults vaccination coverage (Jan 2026 report)](https://www.gov.uk/government/statistics/respiratory-syncytial-virus-rsv-older-adults-vaccination-coverage-in-england/respiratory-syncytial-virus-rsv-older-adults-vaccination-coverage-in-england-january-2026-report).
+- **Fetched by**: `codes/fetch_data.R`
+- **Notes**: Report is updated periodically; URL points to the January 2026 snapshot. Includes routine + catch-up cohorts.
+
+### `rsv_uptake_by_imd_decile.csv` — generated
+- **Description**: Decile-level RSV uptake percentages parsed from the UKHSA report. Columns: `decile, uptake_pct`. Decile 1 = most deprived.
+- **Inputs**: `ukhsa_rsv_uptake_jan2026.html`
+- **Generator**: `codes/fetch_data.R` (HTML table parsed inline via regex; no rvest dependency).
 
 ---
 
@@ -66,12 +79,11 @@ Each per-age vector currently inherits values from the 9-band era; band shifts a
 ## How to refresh inputs
 
 ```sh
-# Download fresh raw inputs (Reconnect matrix only, for now):
+# Download fresh raw inputs:
 Rscript codes/fetch_data.R
 
 # Regenerate derived files from raw inputs:
 Rscript codes/prepare_model_inputs.R
 ```
 
-To force a re-download of any fetched file, delete it from `data/` first
-(the cache check in `fetch_data.R` is just file existence).
+To force a re-download of any fetched file, delete it from `data/` first (the cache check in `fetch_data.R` is just file existence).

@@ -52,7 +52,7 @@ pars <- within(pars, {
     ages   <- c("0 to 4","5 to 14","15 to 19","20 to 29","30 to 39","40 to 49","50 to 59","60 to 64","65 to 74","75+")
     na     <- 10              #number of age groups
     nimd   <- 5               #number of SE groups
-    # ageons (age proportions) is now computed in modelrun.r from demographics2021_10age.csv
+    # ageons (age proportions) is now computed in modelrun.r from demographics_10age.csv
     
     #natural history
     #see also Reis and Sharma 2016, 2018 (consistent parameters, but simpler model)
