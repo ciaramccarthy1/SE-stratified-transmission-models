@@ -116,7 +116,7 @@ print(paste0("Assuming R0 = ", pars$R0 ,"... beta is ", round(betanew,4)) )
 # Note: pars already contains h, mH, rH (and for vacc: vcov, VE_inf/sym/hosp/sev, rV, rW, rW_nat) - they flow through via within().
 parscpp45 = within(parscpp45 <- pars, {
                  cm=as.vector(cm45); cmdim1=cm45dim1; beta=betanew;
-                 Sg0=Sg0; E1g0=E1g0; I1g0=I1g0; I2g0=I2g0; U1g0=U1g0; U2g0=U2g0;
+                 Sg0=Sg0; E1g0=E1g0; E2g0=E2g0; I1g0=I1g0; I2g0=I2g0; U1g0=U1g0; U2g0=U2g0;
                  Rg0=Rg0; Dg0=Dg0; oNg=oNg })
 #  for output
 parsum = parscpp45

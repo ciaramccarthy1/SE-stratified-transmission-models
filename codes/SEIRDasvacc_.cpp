@@ -47,7 +47,7 @@ List model(List parscpp) {
 
   const std::vector<double> Sg0( parscpp["Sg0"]);
   const std::vector<double> E1g0(parscpp["E1g0"]);
-  const std::vector<double> E2g0(parscpp["E1g0"]);
+  const std::vector<double> E2g0(parscpp["E2g0"]);
   const std::vector<double> U1g0(parscpp["U1g0"]);
   const std::vector<double> U2g0(parscpp["U2g0"]);
   const std::vector<double> I1g0(parscpp["I1g0"]);
