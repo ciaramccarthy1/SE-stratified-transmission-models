@@ -46,7 +46,6 @@ pars <- within(pars, {
     ages   <- c("0 to 4","5 to 14","15 to 19","20 to 29","30 to 39","40 to 49","50 to 59","60 to 64","65 to 74","75+")
     na     <- 10              #number of age groups
     nimd   <- 5               #number of SE groups
-    urban  <- T               #area: urban (T), rural (F)
     # ageons (age proportions) is now computed in modelrun.r from demographics2021_10age.csv
     
     #natural history

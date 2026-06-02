@@ -61,11 +61,7 @@ na   = pars$na
 nimd = pars$nimd
 # number of groups
 ng   = na*nimd
-# area - region
-urb  = pars$urban #urban (T), rural (F)
-if(pars$urb==T){ area = "Urban"} else { area ="Rural"}
-print(paste0("Area: ", area))
-# proportion by age (overall, summed across IMD and urban/rural)
+# proportion by age (summed across IMD)
 pa<-vector(); for (i in 1:na){pa[i]=sum(demog2021$Population[which(demog2021$Age==pars$ages[i])])/sum(demog2021$Population)}
 # Assign back into pars so anything reading pars$ageons gets the CSV-derived value
 pars$ageons <- pa
@@ -80,11 +76,15 @@ U1g0 <- rep(0,ng);  # Pre-clinical cases
 U2g0 <- rep(0,ng);  # Pre-clinical cases
 I1g0 <- rep(0,ng);  # Sub-clinical cases
 I2g0 <- rep(0,ng);  # clinical cases
-Rg0  <- rep(0,ng);  # Recovered 
-Dg0  <- rep(0,ng);  # Dead 
+Rg0  <- rep(0,ng);  # Recovered
+Dg0  <- rep(0,ng);  # Dead
+# One row per (IMD, age) in demog2021 - look up by filter
 for (is in 1:nimd) {
-  Sg0[(is-1)*na + 1:na] =   demog2021$Population[1:na + na*(is-1) + na*nimd*(1-urb)] # whole urb population
-  oNg[(is-1)*na + 1:na] = 1/demog2021$Population[1:na + na*(is-1) + na*nimd*(1-urb)] # 1/number in each age group
+  for (ia in 1:na) {
+    pop <- demog2021$Population[demog2021$IMD == is & demog2021$Age == pars$ages[ia]]
+    Sg0[(is-1)*na + ia] <- pop
+    oNg[(is-1)*na + ia] <- 1/pop
+  }
 }
 ## Population by age group (over SES), by SES (over age), overall
 Na<-rep(0,na)
@@ -95,11 +95,6 @@ for (ia in 1:na) { for (is in 1:nimd) {
 Npop = sum(1/oNg);
 
   
-# Checks:
-#  sum(demog2021$Population)                                    #[1] 56550138
-#  sum(demog2021$Population[which(demog2021$rural=="Rural")])   #[1]  9683314
-#  sum(demog2021$Population[which(demog2021$rural=="Urban")])   #[1] 46866824
-#  sum(1/oNa)                                                   #[1] 46866824
 # pars: age 30 to 39, imd=1, 1/100,000 latent infections
 E1g0 = (1/oNg)*pars$pE1g0
 Sg0  = Sg0 - E1g0
@@ -152,7 +147,7 @@ if (pset$FIGURES==1){
 ar=1 #aspect ratio
 
 if(pars$Incidence=="Daily"){daily="daily_"} else {daily=""}
-filename=paste0(parsum$Disease,"_",area,"_SEIRD_epidemic_",daily,pset$Namevacc,TODAY)
+filename=paste0(parsum$Disease,"_SEIRD_epidemic_",daily,pset$Namevacc,TODAY)
 pdf(file=paste0(output_dir,"/",filename,".pdf"))
 
 
@@ -169,7 +164,7 @@ p1 <- ggplot(data, aes(x=time)) +
             axis.text.x = element_text(color=1)) +
       labs(y = "Infectious inc./100k/week", x = "Day", color = "State") +
 	  ylim(0,IUw_novacc) +
-      ggtitle(paste0(parsum$Disease,", ",area)) #+ theme(aspect.ratio=ar)
+      ggtitle(parsum$Disease) #+ theme(aspect.ratio=ar)
 
 print(p1)
 if (pset$platform=="repo" & pars$Disease=="RSV-illness") p1R<-p1
@@ -194,7 +189,7 @@ p2 <- ggplot(data, aes(x=time)) +
             axis.text.x = element_text(color=1)) +
       labs(y = "Clinical infs. /100k/week", x = "Day", color = "IMD") +
 	  ylim(0,Iw_imd_novacc) +
-      ggtitle(paste0(parsum$Disease,", ",area)) #+ theme(aspect.ratio=ar)
+      ggtitle(parsum$Disease) #+ theme(aspect.ratio=ar)
 
 print(p2)
 if (pset$platform=="repo" & pars$Disease=="RSV-illness") p2R<-p2
@@ -219,7 +214,7 @@ p3 <- ggplot(data, aes(x=time)) +
         axis.text.x = element_text(color=1)) +
       labs(y = "Clinical infs. /100k/week", x = "Day", color = "Age") +
 	  ylim(0,Iw_age_novacc) +
-      ggtitle(paste0(parsum$Disease,", ",area))  #+ theme(aspect.ratio=ar)
+      ggtitle(parsum$Disease)  #+ theme(aspect.ratio=ar)
 
 print(p3)
 dev.off()
@@ -297,7 +292,7 @@ if (pset$DIAGNOSTIC==1){
 
 if (pset$SUMMARY==1){
 
-filename=paste0(parsum$Disease,"_",area,"_SEIRD_parameters_",daily,pset$Namevacc,TODAY)
+filename=paste0(parsum$Disease,"_SEIRD_parameters_",daily,pset$Namevacc,TODAY)
 sink(file = paste0(output_dir,"/",filename,".txt"),append=FALSE,split=FALSE)
 
 cat("\n")
@@ -307,7 +302,6 @@ print(paste0("Peak:  ", round(Iwpeakval,3) ," million at ", Iwpeakloc, " days"))
 
 cat("\n Study \n")
 print(paste0("Disease:    ", parsum$Disease))
-print(paste0("Area:       ", area))
 print(paste0("Population: ", Npop))
 print(paste0("Age groups: ", parsum$na))
 print(paste0("SE  groups: ", parsum$nimd))

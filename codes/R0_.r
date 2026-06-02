@@ -13,10 +13,14 @@ nimd <- pars$nimd
 ## Average contact rate of cm45
 #   contact rate of participant across contacts
 cp <- vector(); for (i in 1:(na*nimd)){ cp[i]=sum(cm45[i,])}  #cp #[1] 8.053193 14.369821 15.171069 11.534715 10.880512 10.948698  8.581716  7.393931  5.250907  8.945841 ...
-#   population proportion across age x imd strata
+#   population proportion across age x imd strata (one row per (IMD, age) in demog2021)
 pa0 <- vector()
 for (is in 1:nimd) {
-  pa0[(is-1)*na + 1:na] =   demog2021$Proportion[1:na + na*(is-1) + na*nimd*(1-urb)] } #length(pa0) #[1] 45
+  for (ia in 1:na) {
+    pa0[(is-1)*na + ia] <- demog2021$Population[
+      demog2021$IMD == is & demog2021$Age == pars$ages[ia]]
+  }
+}
 pa0 <- pa0/sum(pa0)
 #   average contact rate over participants
 cav = sum(pa0*cp)

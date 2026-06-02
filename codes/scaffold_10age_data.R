@@ -125,27 +125,28 @@ new_age_labels <- c("0 to 4","5 to 14","15 to 19","20 to 29","30 to 39",
 
 demog <- read.csv(file.path(input_dir, "demographics2021.csv"),
                   header = TRUE, stringsAsFactors = FALSE)
-blocks <- split(demog, list(demog$IMD, demog$rural), drop = TRUE)
+# Aggregate urban+rural for each (IMD, age) and split into one block per IMD
+blocks <- split(demog, demog$IMD, drop = TRUE)
 
 expand_block <- function(b) {
-  b <- b[match(old_ages, b$Age), ]
-  pop <- setNames(b$Population, b$Age)
+  # Sum urban + rural populations for each old age band first
+  pop_old <- tapply(b$Population, b$Age, sum)
+  pop_old <- pop_old[old_ages]
   new_pop <- c(
-    pop["0 to 4"],
-    pop["5 to 11"]   + 0.5 * pop["12 to 17"],     # new 5-14
-    0.5 * pop["12 to 17"] + (2/12) * pop["18 to 29"],   # new 15-19
-    (10/12) * pop["18 to 29"],                    # new 20-29
-    pop["30 to 39"],
-    pop["40 to 49"],
-    pop["50 to 59"],
-    0.5 * pop["60 to 69"],                        # new 60-64
-    0.5 * pop["60 to 69"] + (5/20) * pop["70+"],  # new 65-74
-    (15/20) * pop["70+"]                          # new 75+
+    pop_old["0 to 4"],
+    pop_old["5 to 11"]   + 0.5 * pop_old["12 to 17"],     # new 5-14
+    0.5 * pop_old["12 to 17"] + (2/12) * pop_old["18 to 29"],   # new 15-19
+    (10/12) * pop_old["18 to 29"],                    # new 20-29
+    pop_old["30 to 39"],
+    pop_old["40 to 49"],
+    pop_old["50 to 59"],
+    0.5 * pop_old["60 to 69"],                        # new 60-64
+    0.5 * pop_old["60 to 69"] + (5/20) * pop_old["70+"],  # new 65-74
+    (15/20) * pop_old["70+"]                          # new 75+
   )
   data.frame(
     Age        = new_age_labels,
     IMD        = b$IMD[1],
-    rural      = b$rural[1],
     Population = as.numeric(new_pop),
     tot_pop    = sum(new_pop),
     Proportion = as.numeric(new_pop) / sum(new_pop),
@@ -153,9 +154,7 @@ expand_block <- function(b) {
 }
 
 demog10 <- do.call(rbind, lapply(blocks, expand_block))
-demog10 <- demog10[order(demog10$IMD,
-                         factor(demog10$rural, levels = c("Urban","Rural")),
-                         match(demog10$Age, new_age_labels)), ]
+demog10 <- demog10[order(demog10$IMD, match(demog10$Age, new_age_labels)), ]
 rownames(demog10) <- NULL
 
 write.csv(demog10, file.path(output_dir, "demographics2021_10age.csv"),
@@ -163,5 +162,4 @@ write.csv(demog10, file.path(output_dir, "demographics2021_10age.csv"),
 cat(sprintf("Wrote %s: %d rows (expected %d)\n",
             "data/demographics2021_10age.csv",
             nrow(demog10),
-            length(new_age_labels) * length(unique(demog$IMD)) *
-              length(unique(demog$rural))))
+            length(new_age_labels) * length(unique(demog$IMD))))
