@@ -228,20 +228,22 @@ if (pset$platform=="repo" & pars$Disease=="Influenza")   p3F<-p3
 if (pset$platform=="repo" & pars$Disease=="COVID-19")    p3C<-p3
 
 
-## fig 4 - all diseases
-
-if (pset$platform=="repo" & pars$Disease=="RSV-illness"){
-  filename=paste0("All_diseases_",area,"_SEIRD_epidemics_",daily,pset$Namevacc,TODAY)
-  pdf(file=paste0(output_dir,"/",filename,".pdf"))
-     gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3)
-  dev.off()
-  
-  gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3)
-  
-  ggsave(paste0(output_dir,"/",filename,".png"),
-         gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3),
-         device = "png", width = 8000, height = 3931, units = "px", dpi = 600)
-}
+## fig 4 - all diseases (currently DISABLED: only RSV runs in main_repo.R).
+## To re-enable: uncomment the Influenza + COVID-19 blocks in main_repo.R AND
+## this section below. References p1C/p2C/p3C/p1F/p2F/p3F that are only set
+## when those diseases are also run.
+# if (pset$platform=="repo" & pars$Disease=="RSV-illness"){
+#   filename=paste0("All_diseases_",area,"_SEIRD_epidemics_",daily,pset$Namevacc,TODAY)
+#   pdf(file=paste0(output_dir,"/",filename,".pdf"))
+#      gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3)
+#   dev.off()
+#
+#   gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3)
+#
+#   ggsave(paste0(output_dir,"/",filename,".png"),
+#          gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3),
+#          device = "png", width = 8000, height = 3931, units = "px", dpi = 600)
+# }
 
 }##FIGURES
 

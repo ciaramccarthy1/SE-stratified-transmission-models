@@ -53,14 +53,12 @@ new_to_reconnect <- list(
 
 ## --- 1. Contact matrix ------------------------------------------------------
 
-# Source: IMD matrices repo (Reconnect survey, balanced).
-# Downloaded on demand; cached locally so subsequent runs don't re-fetch.
-reconnect_url  <- "https://raw.githubusercontent.com/lucy-gf/imd_matrices/main/matrices/base_matrix.csv"
+# Raw inputs are fetched (and cached) by codes/fetch_data.R.
+# Sourcing it here makes scaffold idempotent: re-running this script "just works"
+# whether you've fetched before or not.
+source(file.path("codes", "fetch_data.R"))
+
 reconnect_path <- file.path(input_dir, "base_matrix.csv")
-if (!file.exists(reconnect_path)) {
-  message("Downloading base_matrix.csv from ", reconnect_url)
-  download.file(reconnect_url, reconnect_path, mode = "wb", quiet = TRUE)
-}
 cm_long <- read.csv(reconnect_path, header = TRUE, stringsAsFactors = FALSE)
 stopifnot(nrow(cm_long) == 5 * 5 * length(reconnect_ages) * length(reconnect_ages))
 
