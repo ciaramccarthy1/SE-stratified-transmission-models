@@ -11,7 +11,7 @@ pars <- within(pars, {
     #Susceptibility - age-adjusted Henderson 1979, Waterlow 2021
     # TODO(10-age scaffold): 65-74 and 75+ values inherited from old 70+; 60-64 from old 60-69. Replace with source-paper values.
     u   <- c(0.85, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65)
-    #Critically infected fraction - age-adjusted Hodgson 2020 - age adjusted
+    #critical case fraction - age-adjusted Hodgson 2020 - age adjusted
     # TODO(10-age scaffold): same as above
     y   <- c(0.8656, 0.4840, 0.3486, 0.2470, 0.2470, 0.2470, 0.2470, 0.2470, 0.2470, 0.2470)
     #Clinical fraction - by age and IMD group
@@ -32,13 +32,13 @@ pars <- within(pars, {
     #Hospitalisation pathway (H compartment): I2 -> H at rate h*rI2R; H -> D at rate mH*rH; H -> R at rate (1-mH)*rH
     # TODO(H scaffold): h (hospitalisation fraction given clinical) and mH (mortality given hospitalised) - placeholder derivation:
     #   h  = pmin(10*m, 0.8)      (assume hospitalisation roughly 10x mortality, capped)
-    #   mH = m / h                (so overall mortality given clinical = h*mH = m, preserving the legacy m semantics)
+    #   mH = m / h                (so overall mortality given clinical = h*mH = m)
     # Replace h and mH with literature values when available (e.g. Hodgson 2020 hospitalisation rates).
     h  <- pmin(10*m, 0.8)
     mH <- m / h
     rH <- 1/6                     #1/hospital stay length (days^-1); TODO use RSV-specific value
 
-    #Natural waning of post-infection immunity (R -> S); 0 = lifelong (default for single-season)
+    #Waning of natural immunity (R -> S); 0 = lifelong (default for single-season)
     rW_nat <- 0
 	
     #temporal

@@ -9,7 +9,7 @@ pars <- within(pars, {
     #Susceptibility - variant & age-adjusted Baguelin 2013, Fig 22, 36, S52-54 2007-08, H3N2 dominant over H1N1, B
     # TODO(10-age scaffold): 60-64 inherits old 60-69; 65-74 mean(old 60-69, 70+); 75+ inherits old 70+
     u   <- c(0.63750, 0.63750, 0.50625, 0.37500, 0.37500, 0.37500, 0.37500, 0.37500, 0.37500, 0.37500)
-    #Critically infected fraction
+    #critical case fraction
     y   <- rep(1,10)   #Treat clinical and sub-clin infections similarly, with some infections potentially causing death
     #y   <- rep(0.55,10) #most common value in flu studies in multipliers
     #Clinical fraction - by age and IMD group

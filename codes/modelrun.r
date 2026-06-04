@@ -31,7 +31,7 @@ TODAY      <- format(Sys.Date(), "%d-%m-%Y")
 
 
 ## Contact matrix (square, ng x ng where ng = na*nimd)
-# TODO(10-age scaffold): Mas50_urban.csv was generated from Mas45_urban.csv by codes/scaffold_10age_data.R - replace with real 50x50 augmented Polymod matrix
+# TODO(10-age scaffold): Mas50_urban.csv was generated from Mas45_urban.csv by codes/scaffold_10age_data.R - need to replace
 cm45<-(as.matrix(read.csv(paste0(input_dir,"/Mas50_urban.csv"),header=F))) # removes name of columns
 cm45dim1 = dim(cm45)[1]
 
@@ -53,7 +53,7 @@ print(paste0("Incidence  : ", pars$Incidence))
 
 
 ## Demography
-# TODO(10-age scaffold): demographics2021_10age.csv generated from demographics2021.csv by codes/scaffold_10age_data.R - replace with real ONS 10-band data
+# TODO(10-age scaffold): demographics2021_10age.csv generated from demographics2021.csv by codes/scaffold_10age_data.R - need to replace with ONS data
 demog2021 <- read.csv(paste0(input_dir,"/demographics2021_10age.csv"),header=T)
 # number of age groups
 na   = pars$na

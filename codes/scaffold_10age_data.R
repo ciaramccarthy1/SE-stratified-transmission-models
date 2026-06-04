@@ -1,21 +1,6 @@
 ################################################################################
-# SCAFFOLDING SCRIPT — produces 10-age-band data files from the original
-# 9-age inputs by mechanical interpolation. ALL OUTPUTS ARE PLACEHOLDERS.
-#
-# Replace with real data sourced from:
-#   - demographics2021_10age.csv : ONS mid-year estimates rebanded to
-#       0-4, 5-11, 12-17, 18-29, 30-39, 40-49, 50-59, 60-64, 65-74, 75+
-#   - Mas50_urban.csv            : 50x50 augmented Polymod contact matrix
-#       rebuilt for 10 age bands x 5 IMD groups
-#
-# Splitting assumptions (TODO: replace with sourced values):
-#   - Old "60 to 69" (width 10) -> new "60 to 64" + half of new "65 to 74"
-#       split 50/50 of population
-#   - Old "70+"      (assumed effective width 20, i.e. 70-89)
-#       -> half of new "65 to 74" (the 70-74 portion = 5/20 = 1/4 of 70+)
-#       -> new "75+"              (15/20 = 3/4 of 70+)
-#   - Contact matrix: new bands inherit row/col from their old parent band;
-#       new "65 to 74" inherits the mean of old "60 to 69" and "70+" rows/cols
+# SCAFFOLDING SCRIPT — produces 10 age band data files from the original
+# Testing 10 age band model
 ################################################################################
 
 input_dir  <- file.path("data")

@@ -9,7 +9,7 @@ pars <- within(pars, {
     #Susceptibility
     # TODO(10-age scaffold): 60-64 inherits old 60-69; 65-74 mean(old 60-69, 70+); 75+ inherits old 70+
     u    <- c(0.40, 0.39, 0.38, 0.72, 0.86, 0.80, 0.82, 0.88, (0.88+0.74)/2, 0.74) #age-adjusted Davies Nat Med 2020
-    #Critically infected fraction (initial values; overridden below by exp formula)
+    #critical case fraction (initial values; overridden below by exp formula)
     # TODO(10-age scaffold): same as above
     y    <- c(0.29, 0.27, 0.21, 0.26, 0.33, 0.40, 0.49, 0.63, (0.63+0.69)/2, 0.69) #age-adjusted Davies Nat Med 2020
     #sh estimates
@@ -36,7 +36,7 @@ pars <- within(pars, {
     mH <- m / h
     rH <- 1/6                     #1/hospital stay length (days^-1); TODO use COVID-specific value
 
-    #Natural waning of post-infection immunity (R -> S); 0 = lifelong (default for single-season)
+    #Waning of natural immunity (R -> S); 0 = lifelong (default for single-season)
     rW_nat <- 0
     
     #temporal
