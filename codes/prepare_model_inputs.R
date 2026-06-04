@@ -179,3 +179,5 @@ write.csv(demog10, file.path(output_dir, "demographics_10age.csv"),
 cat(sprintf("Wrote %s: %d rows (expected %d)\n",
             "data/demographics_10age.csv",
             nrow(demog10), 5 * length(band_names)))
+
+

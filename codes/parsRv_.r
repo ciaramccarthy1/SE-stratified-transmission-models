@@ -84,12 +84,22 @@ pars <- within(pars, {
     #  rW_nat - natural waning rate R/Rv -> S (per day); 0 disables
     # UK RSV programme: 75+ band only, 100% uptake (placeholder; real coverage TBD).
     # vc length-na: zeros except band 10 (75+).
+    
+    ## As a placeholder, from: https://www.sciencedirect.com/science/article/pii/S2666776226000323#appsec1
+    VE_hosp_obs <- 0.74
+    # https://www.ecdc.europa.eu/en/news-events/rsv-vaccines-safe-and-effective-cochrane-review-finds
+    # VE against RSV-associated LRTI - 0.77
+    # VE against RSV-associated acute respiratory disease - 0.67
+    VE_sym_obs <- 0.67
+    VE_mort_obs <- 0.74 # placeholder
+    VE_inf_obs <- 0 # placeholder
+    
     vc      <- c(rep(0, na - 1), 1)
     vcov    <- rep(vc, nimd)             #per (age x IMD), length ng
-    VE_inf  <- rep(0.0, na*nimd)         #placeholder: no infection blocking
-    VE_sym  <- rep(0.5, na*nimd)         #placeholder
-    VE_hosp <- rep(0.7, na*nimd)         #placeholder
-    VE_mort  <- rep(0.5, na*nimd)         #placeholder
+    VE_inf  <- rep(0.0, na*nimd)        
+    VE_sym  <- rep(1 -  (1 - VE_sym_obs) / (1 - VE_inf_obs), na*nimd) 
+    VE_hosp <- rep(1 - (1 - VE_hosp_obs) / (1 - VE_sym_obs), na*nimd) 
+    VE_mort  <- rep(1 - (1 - VE_mort_obs) / (1 - VE_hosp_obs), na*nimd)  
     rV      <- 1/180                     #rate of immunisation (per day)
     rW      <- 1/365                     #vaccine waning rate (1/year); TODO source-paper value
     rW_nat  <- 0                         #natural waning rate; default 0 (lifelong post-infection immunity)

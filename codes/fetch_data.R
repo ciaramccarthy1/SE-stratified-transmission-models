@@ -92,22 +92,8 @@ fetch_if_missing(
 ## --- RSV vaccine efficacy from Phase 3 trials ------------------------------
 ## Feeds: VE_inf, VE_sym, VE_hosp, VE_mort in parsRv_.r.
 ## Trial papers report composite endpoints (typically VE vs MA-LRTI and
-## VE vs severe LRTD); decomposition into the four model VEs requires a
-## modelling choice. Useful to record raw trial-reported values for reference.
-# fetch_if_missing(
-#   url   = "TODO GSK Arexvy (RSVPreF3) Phase 3 VE estimates by endpoint+season",
-#   path  = file.path(input_dir, "arexvy_ve.csv"),
-#   label = "GSK Arexvy VE")
-#
-# fetch_if_missing(
-#   url   = "TODO Pfizer Abrysvo Phase 3 VE estimates by endpoint+season",
-#   path  = file.path(input_dir, "abrysvo_ve.csv"),
-#   label = "Pfizer Abrysvo VE")
-#
-# fetch_if_missing(
-#   url   = "TODO Moderna mRESVIA Phase 3 VE estimates by endpoint+season",
-#   path  = file.path(input_dir, "mresvia_ve.csv"),
-#   label = "Moderna mRESVIA VE")
+## VE vs severe LRTD)
+##
 
 
 ## --- England RSV vaccination uptake by IMD decile ---------------------
