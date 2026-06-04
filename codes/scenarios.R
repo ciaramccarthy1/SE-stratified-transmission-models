@@ -12,6 +12,7 @@ suppressPackageStartupMessages({
   library(magrittr)
   library(ggplot2)
   library(tidyverse)
+  library(MetBrewer)
 })
 
 setwd(here())
@@ -75,6 +76,7 @@ for (nm in names(scenarios)) {
 }
 rm(scenario_overrides)
 
+
 ## --- Build comparison data frame --------------------------------------------
 # Hw_ag  = cpp output: daily H by (age x IMD) [nd x ng], unvacc chain
 # Hwv_ag = same, vacc-breakthrough chain
@@ -90,36 +92,62 @@ df <- do.call(rbind, lapply(names(results), function(nm) {
     quintile   = factor(1:nimd,
                         labels = c("1 (most dep.)", "2", "3", "4",
                                    "5 (least dep.)")),
+    cumH_75pl = cumH_75pl,
     cumH_per_100k = cumH_75pl / pop_75_by_q * 1e5,
     stringsAsFactors = FALSE)
 }))
 
 
 ## --- Plot -------------------------------------------------------------------
-p <- ggplot(df, aes(x = quintile, y = cumH_per_100k, fill = scenario)) +
+# Total hospitalisations
+p_tot <- ggplot(df, aes(x = quintile, y = cumH_75pl, fill = scenario)) +
   geom_col(position = position_dodge(0.7), width = 0.6) +
   scale_fill_manual(
-    values = c(status_quo = "#377EB8", equal_avg = "#E41A1C"),
+    values = setNames(met.brewer("Derain", n = length(scenarios)),
+                      names(scenarios)),
     labels = c(status_quo = "Status quo uptake",
-               equal_avg  = "Equal coverage (pop-weighted mean)")) +
+               equal_avg  = "Equal coverage (population-weighted mean)")) +
   labs(x = "IMD quintile",
-       y = "Cumulative RSV hospitalisations in 75+\nper 100k 75+ population",
+       y = "Total RSV hospitalisations in 75+ age group",
        fill = NULL,
-       title = "RSV hospitalisations in 75+ by IMD quintile, 180-day simulation",
-       subtitle = "Comparator: status quo 75+ uptake vs equal 75+ uptake at the population-weighted mean") +
+       title = "RSV hospitalisations in 75+ age group by IMD quintile") +
   theme_minimal(base_size = 11) +
   theme(legend.position = "bottom")
 
-out_pdf <- "output/scenarios_RSV_hosp_by_IMD.pdf"
-out_png <- "output/scenarios_RSV_hosp_by_IMD.png"
-ggsave(out_pdf, plot = p, width = 7, height = 5)
-ggsave(out_png, plot = p, width = 7, height = 5, dpi = 200)
-cat(sprintf("\nSaved %s\nSaved %s\n", out_pdf, out_png))
-
-
+p_100k <- ggplot(df, aes(x = quintile, y = cumH_per_100k, fill = scenario)) +
+  geom_col(position = position_dodge(0.7), width = 0.6) +
+  scale_fill_manual(
+    values = setNames(met.brewer("Derain", n = length(scenarios)),
+                      names(scenarios)),
+    labels = c(status_quo = "Status quo uptake",
+               equal_avg  = "Equal coverage (population-weighted mean)")) +
+  labs(x = "IMD quintile",
+       y = "Total RSV hospitalisations in 75+\nper 100k population",
+       fill = NULL,
+       title = "RSV hospitalisations in 75+ age group by IMD quintile") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "bottom")
+  
+  out_pdf <- "output/scenarios_RSV_hosp_tot_IMD.pdf"
+  out_png <- "output/scenarios_RSV_hosp_tot_IMD.png"
+  ggsave(out_pdf, plot = p_tot, width = 7, height = 5)
+  ggsave(out_png, plot = p_tot, width = 7, height = 5, dpi = 200)
+  
+  out_pdf <- "output/scenarios_RSV_hosp_100k_IMD.pdf"
+  out_png <- "output/scenarios_RSV_hosp_100k_IMD.png"
+  ggsave(out_pdf, plot = p_100k, width = 7, height = 5)
+  ggsave(out_png, plot = p_100k, width = 7, height = 5, dpi = 200)
+  
 ## --- Print summary numbers --------------------------------------------------
-cat("\nCumulative hospitalisations per 100k population, by IMD quintile:\n")
-print(df %>%
-        pivot_wider(names_from = scenario, values_from = cumH_per_100k) %>%
-        mutate(diff = status_quo - equal_avg,
-               pct_change_vs_equal = 100 * diff / equal_avg))
+print_summary <- function(value_col, label) {
+  cat(sprintf("\n%s, by IMD quintile:\n", label))
+  print(df %>%
+          pivot_wider(id_cols = quintile,
+                      names_from = scenario,
+                      values_from = {{ value_col }}) %>%
+          mutate(diff = status_quo - equal_avg,
+                 pct_change_vs_equal = 100 * diff / equal_avg))
+}
+
+print_summary(cumH_75pl,     "Total cumulative hospitalisations in 75+")
+print_summary(cumH_per_100k, "Cumulative hospitalisations in 75+ per 100k 75+ pop")
