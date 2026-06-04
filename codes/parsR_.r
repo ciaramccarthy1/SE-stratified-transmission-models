@@ -9,7 +9,7 @@ pars <- within(pars, {
     #Susceptibility - Secondary infection (relative to primary) Hodgson 2020
     # - doesn't model exposures sequentially over years (7 years of historical data)
     #Susceptibility - age-adjusted Henderson 1979, Waterlow 2021
-    # TODO(10-age scaffold): 65-74 and 75+ values inherited from old 70+; 60-64 from old 60-69. Replace with source-paper values.
+    # TODO(10-age scaffold): 65-74 and 75+ values inherited from old 70+; 60-64 from old 60-69. Replace with literature values.
     u   <- c(0.85, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65)
     # critical case fraction - age-adjusted Hodgson 2020
     # TODO(10-age scaffold): same as above

@@ -9,7 +9,7 @@ pars <- within(pars, {
     #Susceptibility - Secondary infection (relative to primary) Hodgson 2020
     # - doesn't model exposures sequentially over years (7 years of historical data)
     #Susceptibility - age-adjusted Henderson 1979, Waterlow 2021
-    # TODO(10-age scaffold): 65-74 and 75+ values inherited from old 70+; 60-64 from old 60-69. Replace with source-paper values.
+    # TODO(10-age scaffold): 65-74 and 75+ values inherited from old 70+; 60-64 from old 60-69. Replace with literature values.
     u   <- c(0.85, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65)
     #critical case fraction - age-adjusted Hodgson 2020 - age adjusted
     # TODO(10-age scaffold): same as above
@@ -47,7 +47,7 @@ pars <- within(pars, {
     na     <- 10              #number of age groups
     nimd   <- 5               #number of SE groups
     urban  <- T               #area: urban (T), rural (F)
-    # TODO(10-age scaffold): old 60-69 split 50/50 -> 60-64 + half of 65-74; old 70+ split 5:15 -> half of 65-74 + 75+. Replace with ONS source.
+    # TODO(10-age scaffold): old 60-69 split 50/50 -> 60-64 + half of 65-74; old 70+ split 5:15 -> half of 65-74 + 75+. Replace with ONS.
     ageons <- c(0.0466, 0.0873, 0.0693, 0.14997, 0.1337, 0.1258, 0.1351, 0.1058/2, 0.1058/2 + 0.1358/4, 0.1358*3/4); ageons=ageons/sum(ageons) #2020 mid
     
     #natural history
@@ -92,7 +92,7 @@ pars <- within(pars, {
     VE_hosp <- rep(0.7, na*nimd)         #placeholder
     VE_mort  <- rep(0.5, na*nimd)         #placeholder
     rV      <- 1/180                     #rate of immunisation (per day)
-    rW      <- 1/365                     #vaccine waning rate (1/year); TODO source-paper value
+    rW      <- 1/365                     #vaccine waning rate (1/year); TODO literature value
     rW_nat  <- 0                         #natural waning rate; default 0 (lifelong post-infection immunity)
     
 })
