@@ -13,15 +13,15 @@ require(tidyverse)
 
 
 ### folders
-input_dir0 <- getwd()
-input_dir  <- paste0(getwd(),"/data")
+input_dir0 <- here()
+input_dir  <- here("data")
 if (pset$platform=="repo"){
-source_dir <- paste0(getwd(),"/codes")
-output_dir <- paste0(getwd(),"/output")
+source_dir <- here("codes")
+output_dir <- here("output")
 TODAY      <- pset$TODAY
 } else {
-source_dir <- paste0(getwd())
-output_dir <- paste0(getwd())
+source_dir <- here()
+output_dir <- here()
 TODAY      <- format(Sys.Date(), "%d-%m-%Y")
 }
 
@@ -30,8 +30,9 @@ TODAY      <- format(Sys.Date(), "%d-%m-%Y")
 #source(paste0(source_dir,"/setup.r"))
 
 
-## Contact matrix 45x45
-cm45<-(as.matrix(read.csv(paste0(input_dir,"/Mas45_urban.csv"),header=F))) # removes name of columns
+## Contact matrix (square, ng x ng where ng = na*nimd)
+# TODO(10-age scaffold): Mas50_urban.csv was generated from Mas45_urban.csv by codes/scaffold_10age_data.R - need to replace
+cm45<-(as.matrix(read.csv(paste0(input_dir,"/Mas50_urban.csv"),header=F))) # removes name of columns
 cm45dim1 = dim(cm45)[1]
 
 
@@ -52,7 +53,8 @@ print(paste0("Incidence  : ", pars$Incidence))
 
 
 ## Demography
-demog2021 <- read.csv(paste0(input_dir,"/demographics2021.csv"),header=T)
+# TODO(10-age scaffold): demographics2021_10age.csv generated from demographics2021.csv by codes/scaffold_10age_data.R - need to replace with ONS data
+demog2021 <- read.csv(paste0(input_dir,"/demographics2021_10age.csv"),header=T)
 # number of age groups
 na   = pars$na
 # number of SES
@@ -111,9 +113,10 @@ print(paste0("Assuming R0 = ", pars$R0 ,"... beta is ", round(betanew,4)) )
 
 
 ## Parameters
+# Note: pars already contains h, mH, rH (and for vacc: vcov, VE_inf/sym/hosp/sev, rV, rW, rW_nat) - they flow through via within().
 parscpp45 = within(parscpp45 <- pars, {
-                 cm=as.vector(cm45); cmdim1=cm45dim1; mI=pars$m; beta=betanew;
-                 Sg0=Sg0; E1g0=E1g0; I1g0=I1g0; I2g0=I2g0; U1g0=U1g0; U2g0=U2g0; 
+                 cm=as.vector(cm45); cmdim1=cm45dim1; beta=betanew;
+                 Sg0=Sg0; E1g0=E1g0; E2g0=E2g0; I1g0=I1g0; I2g0=I2g0; U1g0=U1g0; U2g0=U2g0;
                  Rg0=Rg0; Dg0=Dg0; oNg=oNg })
 #  for output
 parsum = parscpp45
@@ -128,15 +131,10 @@ if (pset$COMPILE==1) {
                 if(pset$DailyIncidence==1) sourceCpp(file = paste0(source_dir,"/","SEIRDasday_.cpp"))
                 mas <- model(parscpp45)
 ## scale of plots without vaccination
-                                           IUw_novacc    = max(10^5*c(mas$byw$Iw, mas$byw$Uw)/Npop) 
-                                           Iw_imd_novacc = max(10^5*c(mas$byw$Iw_s1/Ns[1], mas$byw$Iw_s2/Ns[2], 
-                                                                      mas$byw$Iw_s3/Ns[3], mas$byw$Iw_s4/Ns[4], 
-                                                                      mas$byw$Iw_s5/Ns[5]))
-                                           Iw_age_novacc = max(10^5*c(mas$byaw$Iw_a1/Na[1], mas$byaw$Iw_a2/Na[2],
-                                                                      mas$byaw$Iw_a3/Na[3], mas$byaw$Iw_a4/Na[4],
-                                                                      mas$byaw$Iw_a5/Na[5], mas$byaw$Iw_a6/Na[6],
-                                                                      mas$byaw$Iw_a7/Na[7], mas$byaw$Iw_a8/Na[8],
-                                                                      mas$byaw$Iw_a9/Na[9]))
+                                           IUw_novacc    = max(10^5*c(mas$byw$Iw, mas$byw$Uw)/Npop)
+                                           # mas$byw$Iw_s: matrix (nd|nw) x nimd; mas$byaw$Iw_a: matrix x na
+                                           Iw_imd_novacc = max(10^5 * sweep(mas$byw$Iw_s,  2, Ns, "/"))
+                                           Iw_age_novacc = max(10^5 * sweep(mas$byaw$Iw_a, 2, Na, "/"))
 				
 if (pset$Vaccination==1) {
                 if(pset$DailyIncidence==0) sourceCpp(file = paste0(source_dir,"/","SEIRDasvacc_.cpp"))
@@ -181,12 +179,13 @@ if (pset$platform=="repo" & pars$Disease=="COVID-19")    p1C<-p1
 
 
 ## fig 2 by ses
-data <- data.frame(time=rep(mas$byw$time,5), 
-      IUw=10^5*c(mas$byw$IUw_s1/Ns[1], mas$byw$IUw_s2/Ns[2], mas$byw$IUw_s3/Ns[3], 
-                 mas$byw$IUw_s4/Ns[4], mas$byw$IUw_s5/Ns[5]),
-      Iw =10^5*c(mas$byw$Iw_s1/Ns[1],  mas$byw$Iw_s2/Ns[2],  mas$byw$Iw_s3/Ns[3],  
-                 mas$byw$Iw_s4/Ns[4],  mas$byw$Iw_s5/Ns[5]),
-      IMD=rep(1:5,each=length(mas$byw$time)))
+# Iw_s/Uw_s are (nd|nw) x nimd matrices; flatten column-wise so col j -> IMD j
+IUw_s_mat <- mas$byw$Iw_s + mas$byw$Uw_s
+data <- data.frame(
+  time = rep(mas$byw$time, nimd),
+  IUw  = 10^5 * as.vector(sweep(IUw_s_mat,    2, Ns, "/")),
+  Iw   = 10^5 * as.vector(sweep(mas$byw$Iw_s, 2, Ns, "/")),
+  IMD  = rep(1:nimd, each = length(mas$byw$time)))
 p2 <- ggplot(data, aes(x=time)) + 
       geom_line(aes(y = Iw, group=IMD, color=IMD), lwd=0.8)  +
       theme(text=element_text(size=10),
@@ -205,14 +204,13 @@ if (pset$platform=="repo" & pars$Disease=="COVID-19")    p2C<-p2
 
 
 ## fig 3 by age
-data <- data.frame(time=rep(mas$byw$time,9), 
-       IUw=10^5*c(mas$byaw$IUw_a1/Na[1], mas$byaw$IUw_a2/Na[2], mas$byaw$IUw_a3/Na[3], mas$byaw$IUw_a4/Na[4], 
-                  mas$byaw$IUw_a5/Na[5], mas$byaw$IUw_a6/Na[6], mas$byaw$IUw_a7/Na[7], mas$byaw$IUw_a8/Na[8], 
-                  mas$byaw$IUw_a9/Na[9]),
-        Iw=10^5*c(mas$byaw$Iw_a1/Na[1],  mas$byaw$Iw_a2/Na[2],  mas$byaw$Iw_a3/Na[3],  mas$byaw$Iw_a4/Na[4],  
-                  mas$byaw$Iw_a5/Na[5],  mas$byaw$Iw_a6/Na[6],  mas$byaw$Iw_a7/Na[7],  mas$byaw$Iw_a8/Na[8],
-                  mas$byaw$Iw_a9/Na[9]),
-        AGE=rep(1:9,each=length(mas$byw$time)))
+# Iw_a/Uw_a are (nd|nw) x na matrices; flatten column-wise so col j -> AGE j
+IUw_a_mat <- mas$byaw$Iw_a + mas$byaw$Uw_a
+data <- data.frame(
+  time = rep(mas$byw$time, na),
+  IUw  = 10^5 * as.vector(sweep(IUw_a_mat,     2, Na, "/")),
+  Iw   = 10^5 * as.vector(sweep(mas$byaw$Iw_a, 2, Na, "/")),
+  AGE  = rep(1:na, each = length(mas$byw$time)))
 p3 <- ggplot(data, aes(x=time)) + 
       geom_line(aes(y = Iw, group=AGE, color=AGE), lwd=0.8)  +
       theme(text=element_text(size=10),
@@ -241,8 +239,9 @@ if (pset$platform=="repo" & pars$Disease=="RSV-illness"){
   
   gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3)
   
-  ggsave(paste0(output_dir,"/",filename,".png"), dpi=600, 
-         gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3), device = "png")
+  ggsave(paste0(output_dir,"/",filename,".png"),
+         gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3),
+         device = "png", width = 8000, height = 3931, units = "px", dpi = 600)
 }
 
 }##FIGURES
@@ -329,7 +328,10 @@ print(paste0("infectious clinical (rI2R), days:    ", 1/parsum$rI2R))
 print(paste0("relative subclinical infectiousness: ", parsum$f))
 print(paste0("susceptibility by age     : ")); print(parsum$u)
 print(paste0("clinical  fraction by age : ")); print(parsum$y)
-print(paste0("mortality fraction by age : ")); print(parsum$mI)
+print(paste0("mortality fraction (overall, given clinical) by age : ")); print(parsum$m)
+print(paste0("hospitalisation fraction (given clinical) by age    : ")); print(parsum$h)
+print(paste0("mortality fraction (given hospitalised)    by age   : ")); print(parsum$mH)
+print(paste0("hospital stay length, days                          : ", round(1/parsum$rH,2)))
 
 cat("\n Initial condition \n");
 print(paste0("Initial latent proportion pE1g0: ")); print(as.numeric(parsum$pE1g0))
@@ -350,10 +352,14 @@ print(paste0("Contact matrix: ")); #cm
 
 if (pset$Vaccination==1){
 cat("\n Vaccination \n")
-print(paste0("Coverage:         ")); print(parsum$vcov)
-print(paste0("Efficacy:         ")); print(parsum$veff)
-print(paste0("Vaccination rate: ", round(parsum$rV,5)))
-print(paste0("Reduce clin frac: ", round(parsum$vcln,5))) }
+print(paste0("Coverage (per age x IMD):     ")); print(parsum$vcov)
+print(paste0("VE against infection:         ")); print(parsum$VE_inf)
+print(paste0("VE against symptoms:          ")); print(parsum$VE_sym)
+print(paste0("VE against hospitalisation:   ")); print(parsum$VE_hosp)
+print(paste0("VE against mortality (in H):  ")); print(parsum$VE_mort)
+print(paste0("Vaccination rate (per day):   ", round(parsum$rV,5)))
+print(paste0("Vaccine waning rate (per day):", round(parsum$rW,5)))
+print(paste0("Natural waning rate (per day):", round(parsum$rW_nat,5))) }
 
 
 cat("\n")

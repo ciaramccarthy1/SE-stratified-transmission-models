@@ -2,3 +2,16 @@
 .Rhistory
 .RData
 .Ruserdata
+
+# macOS
+.DS_Store
+
+# R script artifacts
+Rplots.pdf
+
+# Local snapshot folders (for comparing runs before/after refactors; not for tracking)
+output_baseline_pre_*/
+
+# Rcpp compile artifacts
+*.o
+*.so
