@@ -4,15 +4,13 @@ pars <- within(pars, {
     Disease <- "RSV-illness"
     Vaccination <- "No"
     Incidence   <- pset$Incidence
-    
+
     #Clinical responses
     #Susceptibility - Secondary infection (relative to primary) Hodgson 2020
     # - doesn't model exposures sequentially over years (7 years of historical data)
     #Susceptibility - age-adjusted Henderson 1979, Waterlow 2021
-    # TODO(10-age scaffold): 65-74 and 75+ values inherited from old 70+; 60-64 from old 60-69. Replace with source-paper values.
     u   <- c(0.85, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65)
     #Critically infected fraction - age-adjusted Hodgson 2020 - age adjusted
-    # TODO(10-age scaffold): same as above
     y   <- c(0.8656, 0.4840, 0.3486, 0.2470, 0.2470, 0.2470, 0.2470, 0.2470, 0.2470, 0.2470)
     #Clinical fraction - by age and IMD group
     y45 <- rep(y,5)
@@ -22,7 +20,7 @@ pars <- within(pars, {
     #Mortality fraction (in hospital)
     #m    <-
 
-    age = c(mean(0:4),mean(5:11),mean(12:17),mean(18:29),mean(30:39),mean(40:49),mean(50:59),mean(60:64),mean(65:74),mean(75:90))
+    age = c(mean(0:4),mean(5:14),mean(15:19),mean(20:29),mean(30:39),mean(40:49),mean(50:59),mean(60:64),mean(65:74),mean(75:90))
 
     #Mortality fraction if clinically infected - derived and age-adjusted from IFR/y in Hodgson 2020
     # TODO(10-age scaffold): 60-64 inherits old 60-69; 65-74 mean(old 60-69, 70+); 75+ inherits old 70+
@@ -37,7 +35,7 @@ pars <- within(pars, {
     h  <- pmin(10*m, 0.8)
     mH <- m / h
     rH <- 1/6                     #1/hospital stay length (days^-1); TODO use RSV-specific value
-
+    
     #Natural waning of post-infection immunity (R -> S); 0 = lifelong (default for single-season)
     rW_nat <- 0
 	
@@ -49,12 +47,10 @@ pars <- within(pars, {
     nd     <- ceiling((max(times)-min(times)))+1   #days length of model run
     
     #demography
-    ages   <- c("0 to 4","5 to 11","12 to 17","18 to 29","30 to 39","40 to 49","50 to 59","60 to 64","65 to 74","75+")
+    ages   <- c("0 to 4","5 to 14","15 to 19","20 to 29","30 to 39","40 to 49","50 to 59","60 to 64","65 to 74","75+")
     na     <- 10              #number of age groups
     nimd   <- 5               #number of SE groups
-    urban  <- T               #area: urban (T), rural (F)
-    # TODO(10-age scaffold): old 60-69 split 50/50 -> 60-64 + half of 65-74; old 70+ split 5:15 -> half of 65-74 + 75+. Replace with ONS source.
-    ageons <- c(0.0466, 0.0873, 0.0693, 0.14997, 0.1337, 0.1258, 0.1351, 0.1058/2, 0.1058/2 + 0.1358/4, 0.1358*3/4); ageons=ageons/sum(ageons) #2020 mid
+    # ageons (age proportions) is now computed in modelrun.r from demographics_10age.csv
     
     #natural history
     #see also Reis and Sharma 2016, 2018 (consistent parameters, but simpler model)

@@ -20,7 +20,7 @@ pars <- within(pars, {
     #Mortality fraction (in hospital)
     #m    <-
 
-    age = c(mean(0:4),mean(5:11),mean(12:17),mean(18:29),mean(30:39),mean(40:49),mean(50:59),mean(60:64),mean(65:74),mean(75:90))
+    age = c(mean(0:4),mean(5:14),mean(15:19),mean(20:29),mean(30:39),mean(40:49),mean(50:59),mean(60:64),mean(65:74),mean(75:90))
 
     #Mortality fraction if clinically infected
     #-IFR from LG Global paper - age-adjusted from 4 age groups
@@ -44,12 +44,11 @@ pars <- within(pars, {
     nd     <- ceiling((max(times)-min(times)))+1   #days length of model run
     
     #demography
-    ages   <- c("0 to 4","5 to 11","12 to 17","18 to 29","30 to 39","40 to 49","50 to 59","60 to 64","65 to 74","75+")
+    ages   <- c("0 to 4","5 to 14","15 to 19","20 to 29","30 to 39","40 to 49","50 to 59","60 to 64","65 to 74","75+")
     na     <- 10              #number of age groups
     nimd   <- 5               #number of SE groups
     urban  <- T               #area: urban (T), rural (F)
-    # TODO(10-age scaffold): old 60-69 split 50/50 -> 60-64 + half of 65-74; old 70+ split 5:15 -> half of 65-74 + 75+. Replace with ONS source.
-    ageons <- c(0.0466, 0.0873, 0.0693, 0.14997, 0.1337, 0.1258, 0.1351, 0.1058/2, 0.1058/2 + 0.1358/4, 0.1358*3/4); ageons=ageons/sum(ageons) #2020 mid
+    # ageons (age proportions) is now computed in modelrun.r from demographics_10age.csv
     
     #natural history            
     rEI    <- 1/0.8           #latency,  Baguelin 2013

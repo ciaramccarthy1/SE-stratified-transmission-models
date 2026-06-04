@@ -22,7 +22,7 @@ pars <- within(pars, {
     #Mortality fraction (in hospital)
     #m    <-
 
-    age = c(mean(0:4),mean(5:11),mean(12:17),mean(18:29),mean(30:39),mean(40:49),mean(50:59),mean(60:64),mean(65:74),mean(75:90))
+    age = c(mean(0:4),mean(5:14),mean(15:19),mean(20:29),mean(30:39),mean(40:49),mean(50:59),mean(60:64),mean(65:74),mean(75:90))
 
     #Mortality fraction if clinically infected - derived and age-adjusted from IFR/y in Hodgson 2020
     # TODO(10-age scaffold): 60-64 inherits old 60-69; 65-74 mean(old 60-69, 70+); 75+ inherits old 70+
@@ -43,12 +43,10 @@ pars <- within(pars, {
     nd     <- ceiling((max(times)-min(times)))+1   #days length of model run
     
     #demography
-    ages   <- c("0 to 4","5 to 11","12 to 17","18 to 29","30 to 39","40 to 49","50 to 59","60 to 64","65 to 74","75+")
+    ages   <- c("0 to 4","5 to 14","15 to 19","20 to 29","30 to 39","40 to 49","50 to 59","60 to 64","65 to 74","75+")
     na     <- 10              #number of age groups
     nimd   <- 5               #number of SE groups
-    urban  <- T               #area: urban (T), rural (F)
-    # TODO(10-age scaffold): old 60-69 split 50/50 -> 60-64 + half of 65-74; old 70+ split 5:15 -> half of 65-74 + 75+. Replace with ONS source.
-    ageons <- c(0.0466, 0.0873, 0.0693, 0.14997, 0.1337, 0.1258, 0.1351, 0.1058/2, 0.1058/2 + 0.1358/4, 0.1358*3/4); ageons=ageons/sum(ageons) #2020 mid
+    # ageons (age proportions) is now computed in modelrun.r from demographics_10age.csv
     
     #natural history
     #see also Reis and Sharma 2016, 2018 (consistent parameters, but simpler model)
@@ -84,13 +82,24 @@ pars <- within(pars, {
     #  VE_mort  - efficacy against mortality given hospitalised (reduces H_v -> D)
     #  rW     - vaccine waning rate V -> S (per day)
     #  rW_nat - natural waning rate R/Rv -> S (per day); 0 disables
-    # TODO(V scaffold): all VEs uniform across (age, IMD) at 0.5; coverage 1.0; review for RSV 75+ programme.
-    vc      <- rep(1, na)                #per-age coverage placeholder
+    # UK RSV programme: 75+ band only, 100% uptake (placeholder; real coverage TBD).
+    # vc length-na: zeros except band 10 (75+).
+    
+    ## As a placeholder, from: https://www.sciencedirect.com/science/article/pii/S2666776226000323#appsec1
+    VE_hosp_obs <- 0.74
+    # https://www.ecdc.europa.eu/en/news-events/rsv-vaccines-safe-and-effective-cochrane-review-finds
+    # VE against RSV-associated LRTI - 0.77
+    # VE against RSV-associated acute respiratory disease - 0.67
+    VE_sym_obs <- 0.67
+    VE_mort_obs <- 0.74 # placeholder
+    VE_inf_obs <- 0 # placeholder
+    
+    vc      <- c(rep(0, na - 1), 1)
     vcov    <- rep(vc, nimd)             #per (age x IMD), length ng
-    VE_inf  <- rep(0.0, na*nimd)         #placeholder: no infection blocking
-    VE_sym  <- rep(0.5, na*nimd)         #placeholder
-    VE_hosp <- rep(0.7, na*nimd)         #placeholder
-    VE_mort  <- rep(0.5, na*nimd)         #placeholder
+    VE_inf  <- rep(0.0, na*nimd)        
+    VE_sym  <- rep(1 -  (1 - VE_sym_obs) / (1 - VE_inf_obs), na*nimd) 
+    VE_hosp <- rep(1 - (1 - VE_hosp_obs) / (1 - VE_sym_obs), na*nimd) 
+    VE_mort  <- rep(1 - (1 - VE_mort_obs) / (1 - VE_hosp_obs), na*nimd)  
     rV      <- 1/180                     #rate of immunisation (per day)
     rW      <- 1/365                     #vaccine waning rate (1/year); TODO source-paper value
     rW_nat  <- 0                         #natural waning rate; default 0 (lifelong post-infection immunity)

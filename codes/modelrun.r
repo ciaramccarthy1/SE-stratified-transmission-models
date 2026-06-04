@@ -31,8 +31,8 @@ TODAY      <- format(Sys.Date(), "%d-%m-%Y")
 
 
 ## Contact matrix (square, ng x ng where ng = na*nimd)
-# TODO(10-age scaffold): Mas50_urban.csv was generated from Mas45_urban.csv by codes/scaffold_10age_data.R - replace with real 50x50 augmented Polymod matrix
-cm45<-(as.matrix(read.csv(paste0(input_dir,"/Mas50_urban.csv"),header=F))) # removes name of columns
+# Built from Reconnect base_matrix.csv by codes/prepare_model_inputs.R.
+cm45<-(as.matrix(read.csv(paste0(input_dir,"/Mas50.csv"),header=F))) # removes name of columns
 cm45dim1 = dim(cm45)[1]
 
 
@@ -53,23 +53,18 @@ print(paste0("Incidence  : ", pars$Incidence))
 
 
 ## Demography
-# TODO(10-age scaffold): demographics2021_10age.csv generated from demographics2021.csv by codes/scaffold_10age_data.R - replace with real ONS 10-band data
-demog2021 <- read.csv(paste0(input_dir,"/demographics2021_10age.csv"),header=T)
+# Built from ONS LSOA SYA + IoD 2025 by codes/prepare_model_inputs.R.
+demog2021 <- read.csv(paste0(input_dir,"/demographics_10age.csv"),header=T)
 # number of age groups
 na   = pars$na
 # number of SES
 nimd = pars$nimd
 # number of groups
 ng   = na*nimd
-# area - region
-urb  = pars$urban #urban (T), rural (F)
-if(pars$urb==T){ area = "Urban"} else { area ="Rural"}
-print(paste0("Area: ", area))
-# proportion by age
+# proportion by age (summed across IMD)
 pa<-vector(); for (i in 1:na){pa[i]=sum(demog2021$Population[which(demog2021$Age==pars$ages[i])])/sum(demog2021$Population)}
-#  check:
-#  round(pa,4)          [1] 0.0573 0.0873 0.0693 0.1500 0.1337 0.1258 0.1351 0.1058 0.1358
-#  round(pars$ageons,4) [1] 0.0471 0.0882 0.0700 0.1516 0.1351 0.1272 0.1366 0.1069 0.1373
+# Assign back into pars so anything reading pars$ageons gets the CSV-derived value
+pars$ageons <- pa
 
 
 ## Initial state: S, E1:2, I1:2, U1:2, R, D
@@ -81,11 +76,15 @@ U1g0 <- rep(0,ng);  # Pre-clinical cases
 U2g0 <- rep(0,ng);  # Pre-clinical cases
 I1g0 <- rep(0,ng);  # Sub-clinical cases
 I2g0 <- rep(0,ng);  # clinical cases
-Rg0  <- rep(0,ng);  # Recovered 
-Dg0  <- rep(0,ng);  # Dead 
+Rg0  <- rep(0,ng);  # Recovered
+Dg0  <- rep(0,ng);  # Dead
+# One row per (IMD, age) in demog2021 - look up by filter
 for (is in 1:nimd) {
-  Sg0[(is-1)*na + 1:na] =   demog2021$Population[1:na + na*(is-1) + na*nimd*(1-urb)] # whole urb population
-  oNg[(is-1)*na + 1:na] = 1/demog2021$Population[1:na + na*(is-1) + na*nimd*(1-urb)] # 1/number in each age group
+  for (ia in 1:na) {
+    pop <- demog2021$Population[demog2021$IMD == is & demog2021$Age == pars$ages[ia]]
+    Sg0[(is-1)*na + ia] <- pop
+    oNg[(is-1)*na + ia] <- 1/pop
+  }
 }
 ## Population by age group (over SES), by SES (over age), overall
 Na<-rep(0,na)
@@ -96,11 +95,6 @@ for (ia in 1:na) { for (is in 1:nimd) {
 Npop = sum(1/oNg);
 
   
-# Checks:
-#  sum(demog2021$Population)                                    #[1] 56550138
-#  sum(demog2021$Population[which(demog2021$rural=="Rural")])   #[1]  9683314
-#  sum(demog2021$Population[which(demog2021$rural=="Urban")])   #[1] 46866824
-#  sum(1/oNa)                                                   #[1] 46866824
 # pars: age 30 to 39, imd=1, 1/100,000 latent infections
 E1g0 = (1/oNg)*pars$pE1g0
 Sg0  = Sg0 - E1g0
@@ -153,7 +147,7 @@ if (pset$FIGURES==1){
 ar=1 #aspect ratio
 
 if(pars$Incidence=="Daily"){daily="daily_"} else {daily=""}
-filename=paste0(parsum$Disease,"_",area,"_SEIRD_epidemic_",daily,pset$Namevacc,TODAY)
+filename=paste0(parsum$Disease,"_SEIRD_epidemic_",daily,pset$Namevacc,TODAY)
 pdf(file=paste0(output_dir,"/",filename,".pdf"))
 
 
@@ -170,7 +164,7 @@ p1 <- ggplot(data, aes(x=time)) +
             axis.text.x = element_text(color=1)) +
       labs(y = "Infectious inc./100k/week", x = "Day", color = "State") +
 	  ylim(0,IUw_novacc) +
-      ggtitle(paste0(parsum$Disease,", ",area)) #+ theme(aspect.ratio=ar)
+      ggtitle(parsum$Disease) #+ theme(aspect.ratio=ar)
 
 print(p1)
 if (pset$platform=="repo" & pars$Disease=="RSV-illness") p1R<-p1
@@ -195,7 +189,7 @@ p2 <- ggplot(data, aes(x=time)) +
             axis.text.x = element_text(color=1)) +
       labs(y = "Clinical infs. /100k/week", x = "Day", color = "IMD") +
 	  ylim(0,Iw_imd_novacc) +
-      ggtitle(paste0(parsum$Disease,", ",area)) #+ theme(aspect.ratio=ar)
+      ggtitle(parsum$Disease) #+ theme(aspect.ratio=ar)
 
 print(p2)
 if (pset$platform=="repo" & pars$Disease=="RSV-illness") p2R<-p2
@@ -220,7 +214,7 @@ p3 <- ggplot(data, aes(x=time)) +
         axis.text.x = element_text(color=1)) +
       labs(y = "Clinical infs. /100k/week", x = "Day", color = "Age") +
 	  ylim(0,Iw_age_novacc) +
-      ggtitle(paste0(parsum$Disease,", ",area))  #+ theme(aspect.ratio=ar)
+      ggtitle(parsum$Disease)  #+ theme(aspect.ratio=ar)
 
 print(p3)
 dev.off()
@@ -229,20 +223,22 @@ if (pset$platform=="repo" & pars$Disease=="Influenza")   p3F<-p3
 if (pset$platform=="repo" & pars$Disease=="COVID-19")    p3C<-p3
 
 
-## fig 4 - all diseases
-
-if (pset$platform=="repo" & pars$Disease=="RSV-illness"){
-  filename=paste0("All_diseases_",area,"_SEIRD_epidemics_",daily,pset$Namevacc,TODAY)
-  pdf(file=paste0(output_dir,"/",filename,".pdf"))
-     gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3)
-  dev.off()
-  
-  gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3)
-  
-  ggsave(paste0(output_dir,"/",filename,".png"),
-         gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3),
-         device = "png", width = 8000, height = 3931, units = "px", dpi = 600)
-}
+## fig 4 - all diseases (currently DISABLED: only RSV runs in main_repo.R).
+## To re-enable: uncomment the Influenza + COVID-19 blocks in main_repo.R AND
+## this section below. References p1C/p2C/p3C/p1F/p2F/p3F that are only set
+## when those diseases are also run.
+# if (pset$platform=="repo" & pars$Disease=="RSV-illness"){
+#   filename=paste0("All_diseases_",area,"_SEIRD_epidemics_",daily,pset$Namevacc,TODAY)
+#   pdf(file=paste0(output_dir,"/",filename,".pdf"))
+#      gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3)
+#   dev.off()
+#
+#   gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3)
+#
+#   ggsave(paste0(output_dir,"/",filename,".png"),
+#          gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3),
+#          device = "png", width = 8000, height = 3931, units = "px", dpi = 600)
+# }
 
 }##FIGURES
 
@@ -296,7 +292,7 @@ if (pset$DIAGNOSTIC==1){
 
 if (pset$SUMMARY==1){
 
-filename=paste0(parsum$Disease,"_",area,"_SEIRD_parameters_",daily,pset$Namevacc,TODAY)
+filename=paste0(parsum$Disease,"_SEIRD_parameters_",daily,pset$Namevacc,TODAY)
 sink(file = paste0(output_dir,"/",filename,".txt"),append=FALSE,split=FALSE)
 
 cat("\n")
@@ -306,7 +302,6 @@ print(paste0("Peak:  ", round(Iwpeakval,3) ," million at ", Iwpeakloc, " days"))
 
 cat("\n Study \n")
 print(paste0("Disease:    ", parsum$Disease))
-print(paste0("Area:       ", area))
 print(paste0("Population: ", Npop))
 print(paste0("Age groups: ", parsum$na))
 print(paste0("SE  groups: ", parsum$nimd))

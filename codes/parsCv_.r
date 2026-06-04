@@ -13,7 +13,7 @@ pars <- within(pars, {
     # TODO(10-age scaffold): same as above
     y    <- c(0.29, 0.27, 0.21, 0.26, 0.33, 0.40, 0.49, 0.63, (0.63+0.69)/2, 0.69) #age-adjusted Davies Nat Med 2020
     #sh estimates
-    age = c(mean(0:4),mean(5:11),mean(12:17),mean(18:29),mean(30:39),mean(40:49),mean(50:59),mean(60:64),mean(65:74),mean(75:90))
+    age = c(mean(0:4),mean(5:14),mean(15:19),mean(20:29),mean(30:39),mean(40:49),mean(50:59),mean(60:64),mean(65:74),mean(75:90))
     yA_0=0.438 #Med: 0.438, CI: [0.305,0.663]
     yr_0=0.012 #Med: 0.012, CI: [0.007,0.019]
     y[3:10]=yA_0*exp((age[3:10]-age[10])*yr_0)
@@ -43,12 +43,11 @@ pars <- within(pars, {
     nd     <- ceiling((max(times)-min(times)))+1   #days length of model run
     
     #demography
-    ages   <- c("0 to 4","5 to 11","12 to 17","18 to 29","30 to 39","40 to 49","50 to 59","60 to 64","65 to 74","75+")
+    ages   <- c("0 to 4","5 to 14","15 to 19","20 to 29","30 to 39","40 to 49","50 to 59","60 to 64","65 to 74","75+")
     na     <- 10              #number of age groups
     nimd   <- 5               #number of SE groups
     urban  <- T               #area: urban (T), rural (F)
-    # TODO(10-age scaffold): old 60-69 split 50/50 -> 60-64 + half of 65-74; old 70+ split 5:15 -> half of 65-74 + 75+. Replace with ONS source.
-    ageons <- c(0.0466, 0.0873, 0.0693, 0.14997, 0.1337, 0.1258, 0.1351, 0.1058/2, 0.1058/2 + 0.1358/4, 0.1358*3/4); ageons=ageons/sum(ageons) #2020 mid
+    # ageons (age proportions) is now computed in modelrun.r from demographics_10age.csv
     
     #natural history            
     rEI    <- 1/3             #latency = rEU, Davies 2020 Nat Med
