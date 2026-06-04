@@ -152,7 +152,8 @@ decile_col <- grep("^Index of Multiple Deprivation \\(IMD\\) Decile",
                    names(iod), value = TRUE)[1]
 lsoa_imd <- data.frame(
   lsoa     = iod[["LSOA code (2021)"]],
-  quintile = ceiling(iod[[decile_col]] / 2),  # decile 1-2 -> quintile 1
+  decile   = iod[[decile_col]],                       # 1 = most deprived
+  quintile = ceiling(iod[[decile_col]] / 2),          # decile 1-2 -> quintile 1
   stringsAsFactors = FALSE)
 
 # Inner join: keep only LSOAs present in both (England only, since IoD is England)
@@ -179,5 +180,35 @@ write.csv(demog10, file.path(output_dir, "demographics_10age.csv"),
 cat(sprintf("Wrote %s: %d rows (expected %d)\n",
             "data/demographics_10age.csv",
             nrow(demog10), 5 * length(band_names)))
+
+## --- 3. RSV uptake by IMD quintile (population-weighted) -------------------
+## Collapse decile -> quintile using the 75+ population in each decile as
+## weights, since the programme targets 75+. NOTE: will need to edit if looking at 65-74yos
+
+uptake_path <- file.path(input_dir, "rsv_uptake_by_imd_decile.csv")
+uptake_dec  <- read.csv(uptake_path, stringsAsFactors = FALSE)
+uptake_dec  <- uptake_dec[order(uptake_dec$decile), ]
+stopifnot(all(uptake_dec$decile == 1:10))
+
+# 75+ population by decile (sum across all English LSOAs within each decile)
+pop_75_by_decile <- tapply(joined[["75+"]], joined$decile, sum)
+stopifnot(length(pop_75_by_decile) == 10,
+          all(as.integer(names(pop_75_by_decile)) == 1:10))
+
+# Population-weighted collapse: paired deciles (2k-1, 2k) -> quintile k
+uptake_dec$pop_75    <- as.numeric(pop_75_by_decile[as.character(uptake_dec$decile)])
+uptake_dec$quintile  <- ceiling(uptake_dec$decile / 2)
+uptake_quintile <- with(uptake_dec,
+                        tapply(uptake_pct * pop_75, quintile, sum) /
+                        tapply(pop_75,              quintile, sum))
+
+uptake_qntl_df <- data.frame(
+  quintile   = 1:5,
+  uptake_pct = as.numeric(uptake_quintile))
+write.csv(uptake_qntl_df,
+          file.path(output_dir, "rsv_uptake_by_imd_quintile.csv"),
+          row.names = FALSE)
+cat(sprintf("Wrote %s: %d quintiles (75+-population-weighted from decile)\n",
+            "data/rsv_uptake_by_imd_quintile.csv", nrow(uptake_qntl_df)))
 
 

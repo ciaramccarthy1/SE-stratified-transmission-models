@@ -82,8 +82,9 @@ pars <- within(pars, {
     #  VE_mort  - efficacy against mortality given hospitalised (reduces H_v -> D)
     #  rW     - vaccine waning rate V -> S (per day)
     #  rW_nat - natural waning rate R/Rv -> S (per day); 0 disables
-    # UK RSV programme: 75+ band only, 100% uptake (placeholder; real coverage TBD).
-    # vc length-na: zeros except band 10 (75+).
+    # UK RSV 75+ programme: real uptake by IMD quintile (UKHSA Jan 2026 report,
+    # population-weighted from deciles by codes/prepare_model_inputs.R).
+    # vcov targets band 10 (75+) only; all other ages have vcov = 0.
     
     ## As a placeholder, from: https://www.sciencedirect.com/science/article/pii/S2666776226000323#appsec1
     VE_hosp_obs <- 0.74
@@ -94,8 +95,12 @@ pars <- within(pars, {
     VE_mort_obs <- 0.74 # placeholder
     VE_inf_obs <- 0 # placeholder
     
-    vc      <- c(rep(0, na - 1), 1)
-    vcov    <- rep(vc, nimd)             #per (age x IMD), length ng
+    .uptake <- read.csv(file.path("data", "rsv_uptake_by_imd_quintile.csv"))
+    .uptake <- .uptake[order(.uptake$quintile), ]
+    stopifnot(.uptake$quintile == 1:5)
+    .vc <- matrix(0, na, nimd)
+    .vc[na, ] <- .uptake$uptake_pct / 100     # band 10 (75+); fraction in [0,1]
+    vcov    <- as.vector(.vc)                 # IMD-major (length ng); col-by-col flatten
     VE_inf  <- rep(0.0, na*nimd)        
     VE_sym  <- rep(1 -  (1 - VE_sym_obs) / (1 - VE_inf_obs), na*nimd) 
     VE_hosp <- rep(1 - (1 - VE_hosp_obs) / (1 - VE_sym_obs), na*nimd) 
