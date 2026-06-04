@@ -30,8 +30,7 @@ pars <- within(pars, {
     m <- c(0.000056, 0.000116, 0.000348, 0.001210, 0.003327, 0.005627, 0.018450, 0.053066, (0.053066+0.139813)/2, 0.139813)
 
     #Hospitalisation pathway (H compartment): I2 -> H at rate h*rI2R; H -> D at rate mH*rH; H -> R at rate (1-mH)*rH
-    # TODO(H scaffold): placeholder h = pmin(10*m, 0.8); mH = m/h so total mortality given clinical preserved.
-    # Replace with literature values (e.g. Verity 2020 / Knock 2021 hospitalisation rates).
+    # TODO(H scaffold): placeholder h = pmin(10*m, 0.8); mH = m/h so total mortality given clinical preserved. Need to replace with literature values.
     h  <- pmin(10*m, 0.8)
     mH <- m / h
     rH <- 1/6                     #1/hospital stay length (days^-1); TODO use COVID-specific value
@@ -51,7 +50,7 @@ pars <- within(pars, {
     na     <- 10              #number of age groups
     nimd   <- 5               #number of SE groups
     urban  <- T               #area: urban (T), rural (F)
-    # TODO(10-age scaffold): old 60-69 split 50/50 -> 60-64 + half of 65-74; old 70+ split 5:15 -> half of 65-74 + 75+. Replace with ONS source.
+    # TODO(10-age scaffold): old 60-69 split 50/50 -> 60-64 + half of 65-74; old 70+ split 5:15 -> half of 65-74 + 75+. Need to replace.
     ageons <- c(0.0466, 0.0873, 0.0693, 0.14997, 0.1337, 0.1258, 0.1351, 0.1058/2, 0.1058/2 + 0.1358/4, 0.1358*3/4); ageons=ageons/sum(ageons) #2020 mid
     
     #natural history            
