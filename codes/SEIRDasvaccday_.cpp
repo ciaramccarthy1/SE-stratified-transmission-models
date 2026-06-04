@@ -103,6 +103,8 @@ List model(List parscpp) {
   //stratified matrices (totals = unvacc + vacc)
   NumericMatrix Ew_s(nd, ns), Iw_s(nd, ns), Uw_s(nd, ns), Hw_s(nd, ns), Rw_s(nd, ns);
   NumericMatrix Iw_a(nd, na), Uw_a(nd, na), Hw_a(nd, na);
+  //(age x IMD)-stratified hospitalisation incidence (rows=day, cols=ig=is*na+ia)
+  NumericMatrix Hw_ag(nd, ng), Hwv_ag(nd, ng);
   //V-specific stratification (stock)
   NumericMatrix Vlev_a(nd, na), Vlev_s(nd, ns);
 
@@ -142,6 +144,7 @@ List model(List parscpp) {
   double Vpw=0;  //daily new vaccinations
   NumericVector Epw_s(ns), Ipw_s(ns), Upw_s(ns), Hpw_s(ns), Rpw_s(ns);
   NumericVector Ipw_a(na), Upw_a(na), Hpw_a(na);
+  NumericVector Hpw_ag(ng), Hpw_vag(ng);  //daily H accumulators per (age x IMD)
 
   //temp working vars
   double yas, ua, ha, mHa, rrepa, cmi;
@@ -295,6 +298,8 @@ List model(List parscpp) {
       Ipw_s[is] += dIin + dIvin;
       Upw_s[is] += dUin + dUvin;
       Hpw_s[is] += dHin + dHvin;
+      Hpw_ag[ig]  += dHin;
+      Hpw_vag[ig] += dHvin;
       Rpw_s[is] += dR + dRv;
       Ipw_a[ia] += dIin + dIvin;
       Upw_a[ia] += dUin + dUvin;
@@ -347,6 +352,10 @@ List model(List parscpp) {
         Uw_a(day-1, ia) = Upw_a[ia]; Upw_a[ia] = 0;
         Hw_a(day-1, ia) = Hpw_a[ia]; Hpw_a[ia] = 0;
       }
+      for (int ig2 = 0; ig2 < ng; ig2++) {
+        Hw_ag(day-1, ig2)  = Hpw_ag[ig2];  Hpw_ag[ig2]  = 0;
+        Hwv_ag(day-1, ig2) = Hpw_vag[ig2]; Hpw_vag[ig2] = 0;
+      }
     }
   }
 
@@ -379,6 +388,8 @@ List model(List parscpp) {
     Named("Iw_a")  = Iw_a,
     Named("Uw_a")  = Uw_a,
     Named("Hw_a")  = Hw_a,
+    Named("Hw_ag") = Hw_ag,    //daily H by (age x IMD), unvacc chain
+    Named("Hwv_ag")= Hwv_ag,   //daily H by (age x IMD), vacc breakthrough chain
     Named("Vlev_a")= Vlev_a);
 
   return Rcpp::List::create(Rcpp::Named("byw") = byw, Rcpp::Named("byaw") = byaw);

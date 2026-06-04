@@ -73,6 +73,8 @@ List model(List parscpp) {
   NumericVector Vw(nw);
   NumericVector Vlev(nw);
   NumericMatrix Ew_s(nw, ns), Iw_s(nw, ns), Uw_s(nw, ns), Hw_s(nw, ns), Rw_s(nw, ns);
+  //(age x IMD)-stratified hospitalisation incidence (rows=week, cols=ig=is*na+ia)
+  NumericMatrix Hw_ag(nw, ng), Hwv_ag(nw, ng);
   NumericMatrix Iw_a(nw, na), Uw_a(nw, na), Hw_a(nw, na);
   NumericMatrix Vlev_a(nw, na), Vlev_s(nw, ns);
 
@@ -109,6 +111,7 @@ List model(List parscpp) {
   double Vpw=0;
   NumericVector Epw_s(ns), Ipw_s(ns), Upw_s(ns), Hpw_s(ns), Rpw_s(ns);
   NumericVector Ipw_a(na), Upw_a(na), Hpw_a(na);
+  NumericVector Hpw_ag(ng), Hpw_vag(ng);  //weekly H accumulators per (age x IMD)
 
   double yas, ua, ha, mHa, rrepa, cmi;
   double rVas, ve_i, ve_y, ve_h, ve_m;
@@ -250,6 +253,8 @@ List model(List parscpp) {
       Ipw_s[is] += dIin + dIvin;
       Upw_s[is] += dUin + dUvin;
       Hpw_s[is] += dHin + dHvin;
+      Hpw_ag[ig]  += dHin;
+      Hpw_vag[ig] += dHvin;
       Rpw_s[is] += dR + dRv;
       Ipw_a[ia] += dIin + dIvin;
       Upw_a[ia] += dUin + dUvin;
@@ -301,6 +306,10 @@ List model(List parscpp) {
         Uw_a(week-1, ia) = Upw_a[ia]; Upw_a[ia] = 0;
         Hw_a(week-1, ia) = Hpw_a[ia]; Hpw_a[ia] = 0;
       }
+      for (int ig2 = 0; ig2 < ng; ig2++) {
+        Hw_ag(week-1, ig2)  = Hpw_ag[ig2];  Hpw_ag[ig2]  = 0;
+        Hwv_ag(week-1, ig2) = Hpw_vag[ig2]; Hpw_vag[ig2] = 0;
+      }
     }
   }
 
@@ -333,6 +342,8 @@ List model(List parscpp) {
     Named("Iw_a")  = Iw_a,
     Named("Uw_a")  = Uw_a,
     Named("Hw_a")  = Hw_a,
+    Named("Hw_ag") = Hw_ag,    //weekly H by (age x IMD), unvacc chain
+    Named("Hwv_ag")= Hwv_ag,   //weekly H by (age x IMD), vacc breakthrough chain
     Named("Vlev_a")= Vlev_a);
 
   return Rcpp::List::create(Rcpp::Named("byw") = byw, Rcpp::Named("byaw") = byaw);
