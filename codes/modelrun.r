@@ -46,6 +46,11 @@ if(pset$Vaccination==0){
    if(pset$Disease=="Influenza")   source(paste0(source_dir,"/parsFv_.r"))
    if(pset$Disease=="RSV-illness") source(paste0(source_dir,"/parsRv_.r"))
 }
+# Scenario hook: codes/scenarios.R sets `scenario_overrides` as a named list
+# (e.g. list(vcov = ...)) to override per-run pars entries before the cpp call.
+if (exists("scenario_overrides", inherits = TRUE)) {
+  for (.nm in names(scenario_overrides)) pars[[.nm]] <- scenario_overrides[[.nm]]
+}
 print(paste0("Disease:     ", pars$Disease))
 print(paste0("Vaccination: ", pars$Vaccination))
 print(paste0("Incidence  : ", pars$Incidence))

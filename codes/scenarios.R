@@ -1,0 +1,122 @@
+################################################################################
+# Run RSV 75+ vaccination scenarios and compare hospitalisation outcomes
+# by IMD quintile.
+#
+# Each scenario defines a `vcov` vector (length na*nimd, IMD-major) which
+# replaces parsRv_.r's default before the cpp model runs.
+################################################################################
+
+suppressPackageStartupMessages({
+  library(here)
+  library(Rcpp)
+  library(magrittr)
+  library(ggplot2)
+  library(tidyverse)
+})
+
+setwd(here())
+
+## --- pset for all scenarios -------------------------------------------------
+source("codes/setup.r")
+pset$Disease        <- "RSV-illness"
+pset$Vaccination    <- 1
+pset$DailyIncidence <- 1
+pset$Incidence      <- "Daily"
+pset$Namevacc       <- "vaccine_"
+pset$TODAY          <- ""
+pset$FIGURES        <- 0
+pset$DIAGNOSTIC     <- 0
+pset$SUMMARY        <- 0
+pset$COMPILE        <- 1
+
+
+## --- Build the comparator scenarios ----------------------------------------
+na   <- 10
+nimd <- 5
+
+build_vcov <- function(uptake_per_quintile, na, nimd) {
+  stopifnot(length(uptake_per_quintile) == nimd)
+  vc <- matrix(0, na, nimd)
+  vc[na, ] <- uptake_per_quintile        # band 10 (75+) only
+  as.vector(vc)                          # IMD-major
+}
+
+# Status quo: UKHSA uptake by IMD quintile 
+uptake_status_quo <- read.csv("data/rsv_uptake_by_imd_quintile.csv")
+uptake_status_quo <- uptake_status_quo$uptake_pct[
+  order(uptake_status_quo$quintile)] / 100
+
+# Population-weighted mean of current uptake = dose-neutral equal-coverage counterfactual
+demog        <- read.csv("data/demographics_10age.csv")
+pop_75_by_q  <- demog$Population[demog$Age == "75+"]
+stopifnot(length(pop_75_by_q) == nimd)
+equal_uptake <- sum(uptake_status_quo * pop_75_by_q) / sum(pop_75_by_q)
+
+scenarios <- list(
+  status_quo = build_vcov(uptake_status_quo,         na, nimd),
+  equal_avg  = build_vcov(rep(equal_uptake, nimd),   na, nimd))
+
+cat("Status-quo uptake by quintile:",
+    paste0(round(uptake_status_quo * 100, 1), "%", collapse = ", "), "\n")
+cat("Equal uptake (pop-weighted mean):",
+    paste0(round(equal_uptake * 100, 1), "%"), "\n\n")
+
+## --- Run each scenario ------------------------------------------------------
+results <- list()
+for (nm in names(scenarios)) {
+  cat(sprintf("=== Running scenario: %s ===\n", nm))
+  scenario_overrides <- list(vcov = scenarios[[nm]])
+  source("codes/modelrun.r")
+  results[[nm]] <- list(
+    mas = mas,
+    Npop = Npop, Na = Na, Ns = Ns,
+    parsum = parsum)
+  rm(mas)
+}
+rm(scenario_overrides)
+
+
+## --- Build comparison data frame --------------------------------------------
+# Hw_s = cpp output: daily new hospitalisations stratified by IMD (all ages)
+# Compare cumulative H per 100k population per quintile across scenarios.
+df <- do.call(rbind, lapply(names(results), function(nm) {
+  r        <- results[[nm]]
+  cumH_q   <- colSums(r$mas$byw$Hw_s)   # length nimd, cumulative new H per IMD
+  data.frame(
+    scenario   = nm,
+    quintile   = factor(1:nimd,
+                        labels = c("1 (most dep.)", "2", "3", "4",
+                                   "5 (least dep.)")),
+    cumH_per_100k = cumH_q / r$Ns * 1e5,
+    stringsAsFactors = FALSE)
+}))
+
+
+## --- Plot -------------------------------------------------------------------
+p <- ggplot(df, aes(x = quintile, y = cumH_per_100k, fill = scenario)) +
+  geom_col(position = position_dodge(0.7), width = 0.6) +
+  scale_fill_manual(
+    values = c(status_quo = "#377EB8", equal_avg = "#E41A1C"),
+    labels = c(status_quo = "Status quo uptake",
+               equal_avg  = "Equal coverage (pop-weighted mean)")) +
+  labs(x = "IMD quintile",
+       y = "Cumulative RSV hospitalisations per 100k population",
+       fill = NULL,
+       title = "RSV hospitalisations by IMD quintile, 180-day simulation",
+       subtitle = "Comparator: status quo 75+ uptake vs equal 75+ uptake at the population-weighted mean") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "bottom")
+
+out_pdf <- "output/scenarios_RSV_hosp_by_IMD.pdf"
+out_png <- "output/scenarios_RSV_hosp_by_IMD.png"
+ggsave(out_pdf, plot = p, width = 7, height = 5)
+ggsave(out_png, plot = p, width = 7, height = 5, dpi = 200)
+cat(sprintf("\nSaved %s\nSaved %s\n", out_pdf, out_png))
+
+
+## --- Print summary numbers --------------------------------------------------
+cat("\nCumulative hospitalisations per 100k population, by IMD quintile:\n")
+print(df %>%
+        pivot_wider(names_from = scenario, values_from = cumH_per_100k) %>%
+        mutate(diff = status_quo - equal_avg,
+               pct_change_vs_equal = 100 * diff / equal_avg))
