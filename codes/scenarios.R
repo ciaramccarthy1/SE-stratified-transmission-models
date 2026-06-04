@@ -75,19 +75,22 @@ for (nm in names(scenarios)) {
 }
 rm(scenario_overrides)
 
-
 ## --- Build comparison data frame --------------------------------------------
-# Hw_s = cpp output: daily new hospitalisations stratified by IMD (all ages)
-# Compare cumulative H per 100k population per quintile across scenarios.
+# Hw_ag  = cpp output: daily H by (age x IMD) [nd x ng], unvacc chain
+# Hwv_ag = same, vacc-breakthrough chain
+# Slice to 75+ band (row na of the reshaped (age x IMD) matrix) per quintile.
 df <- do.call(rbind, lapply(names(results), function(nm) {
-  r        <- results[[nm]]
-  cumH_q   <- colSums(r$mas$byw$Hw_s)   # length nimd, cumulative new H per IMD
+  r          <- results[[nm]]
+  totH_g     <- colSums(r$mas$byaw$Hw_ag) +
+                colSums(r$mas$byaw$Hwv_ag)        # length ng, IMD-major
+  totH_mat   <- matrix(totH_g, na, nimd)           # rows=age, cols=IMD
+  cumH_75pl  <- totH_mat[na, ]                     # length nimd: 75+ per quintile
   data.frame(
     scenario   = nm,
     quintile   = factor(1:nimd,
                         labels = c("1 (most dep.)", "2", "3", "4",
                                    "5 (least dep.)")),
-    cumH_per_100k = cumH_q / r$Ns * 1e5,
+    cumH_per_100k = cumH_75pl / pop_75_by_q * 1e5,
     stringsAsFactors = FALSE)
 }))
 
@@ -100,9 +103,9 @@ p <- ggplot(df, aes(x = quintile, y = cumH_per_100k, fill = scenario)) +
     labels = c(status_quo = "Status quo uptake",
                equal_avg  = "Equal coverage (pop-weighted mean)")) +
   labs(x = "IMD quintile",
-       y = "Cumulative RSV hospitalisations per 100k population",
+       y = "Cumulative RSV hospitalisations in 75+\nper 100k 75+ population",
        fill = NULL,
-       title = "RSV hospitalisations by IMD quintile, 180-day simulation",
+       title = "RSV hospitalisations in 75+ by IMD quintile, 180-day simulation",
        subtitle = "Comparator: status quo 75+ uptake vs equal 75+ uptake at the population-weighted mean") +
   theme_minimal(base_size = 11) +
   theme(legend.position = "bottom")
