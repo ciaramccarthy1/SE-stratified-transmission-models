@@ -1,14 +1,14 @@
-//SEIRDHV - daily incidence
+//SEIRDHV - daily incidence  (single-stage compartments, no Erlang)
 // Leaky vacc compartment V with breakthrough shadow chain (Ev/Iv/Uv/Hv/Rv/Dv)
 // and 4 vaccine-efficacy knobs (per (age x IMD)):
 //   VE_inf  - reduces susceptibility of V (leaky)
-//   VE_sym  - reduces clinical fraction (E2_v -> I1_v vs U1_v)
-//   VE_hosp - reduces hospitalisation fraction (I2_v -> H_v vs R_v)
+//   VE_sym  - reduces clinical fraction (E_v -> I_v vs U_v)
+//   VE_hosp - reduces hospitalisation fraction (I_v -> H_v vs R_v)
 //   VE_mort  - reduces mortality given hospitalised (H_v -> D vs R_v)
 //
 // Compartments per (age x IMD):
-//   Unvacc: S, E1, E2, I1, I2, H, U1, U2, R, D
-//   Vacc  : V, Ev1, Ev2, Iv1, Iv2, Hv, Uv1, Uv2, Rv, Dv
+//   Unvacc: S, E, I, H, U, R, D
+//   Vacc  : V, Ev, Iv, Hv, Uv, Rv, Dv
 //   Counters: Vc (cumulative doses), Cc (reported clinical, unvacc),
 //             Ccv (reported clinical, vacc breakthroughs)
 //
@@ -17,8 +17,8 @@
 // H and Hv assumed isolated (no FOI contribution)
 //
 // Force of infection on group ig sums contributions from BOTH chains:
-//   I1, I2 (unvacc), Iv1, Iv2 (vacc)
-//   U1, U2 (unvacc), Uv1, Uv2 (vacc) - subclinical, scaled by f
+//   I (unvacc), Iv (vacc)
+//   U (unvacc), Uv (vacc) - subclinical, scaled by f
 // Vaccinated infectious individuals transmit at the SAME rate as unvaccinated
 // (no VE_transmission knob in this version).
 
@@ -31,12 +31,9 @@ List model(List parscpp) {
 
   //natural history
   const double beta( parscpp["beta"]);
-  const double rEI(  parscpp["rEI"]);
-  const double rI1I2(parscpp["rI1I2"]);
-  const double rI2R( parscpp["rI2R"]);
-  const double rUR(  parscpp["rUR"]);
-  const double rE    = 2*rEI;
-  const double rU    = 2*rUR;
+  const double rEI(  parscpp["rEI"]);         //latency E -> I/U (single stage, no Erlang)
+  const double rIR(  parscpp["rIR"]);         //recovery I -> R/H (single stage, no Erlang)
+  const double rUR(  parscpp["rUR"]);         //recovery U -> R   (single stage, no Erlang)
   const double f(    parscpp["f"]);
   const double rH(   parscpp["rH"]);
 
@@ -70,26 +67,23 @@ List model(List parscpp) {
   const int   cmdim1( parscpp["cmdim1"]);
 
   const std::vector<double> Sg0( parscpp["Sg0"]);
-  const std::vector<double> E1g0(parscpp["E1g0"]);
-  const std::vector<double> E2g0(parscpp["E2g0"]);
-  const std::vector<double> U1g0(parscpp["U1g0"]);
-  const std::vector<double> U2g0(parscpp["U2g0"]);
-  const std::vector<double> I1g0(parscpp["I1g0"]);
-  const std::vector<double> I2g0(parscpp["I2g0"]);
+  const std::vector<double> Eg0( parscpp["Eg0"]);
+  const std::vector<double> Ug0( parscpp["Ug0"]);
+  const std::vector<double> Ig0( parscpp["Ig0"]);
   const std::vector<double> Rg0( parscpp["Rg0"]);
   const std::vector<double> Dg0( parscpp["Dg0"]);
   const std::vector<double> oNg( parscpp["oNg"]);
 
   //unvacc states
-  std::vector<double> S_0(ng), E1_0(ng), E2_0(ng);
-  std::vector<double> I1_0(ng), I2_0(ng), H_0(ng);
-  std::vector<double> U1_0(ng), U2_0(ng);
+  std::vector<double> S_0(ng), E_0(ng);
+  std::vector<double> I_0(ng), H_0(ng);
+  std::vector<double> U_0(ng);
   std::vector<double> R_0(ng),  D_0(ng);
   //vacc states
   std::vector<double> V_0(ng);
-  std::vector<double> Ev1_0(ng), Ev2_0(ng);
-  std::vector<double> Iv1_0(ng), Iv2_0(ng), Hv_0(ng);
-  std::vector<double> Uv1_0(ng), Uv2_0(ng);
+  std::vector<double> Ev_0(ng);
+  std::vector<double> Iv_0(ng), Hv_0(ng);
+  std::vector<double> Uv_0(ng);
   std::vector<double> Rv_0(ng),  Dv_0(ng);
   //counters
   std::vector<double> Vc_0(ng), Cc_0(ng), Ccv_0(ng);
@@ -116,17 +110,17 @@ List model(List parscpp) {
     ig = ia + is*na;
     //unvacc
     S_0[ig]  = Sg0[ig];
-    E1_0[ig] = E1g0[ig]; E2_0[ig] = E2g0[ig];
-    I1_0[ig] = I1g0[ig]; I2_0[ig] = I2g0[ig];
-    U1_0[ig] = U1g0[ig]; U2_0[ig] = U2g0[ig];
+    E_0[ig]  = Eg0[ig];
+    I_0[ig]  = Ig0[ig];
+    U_0[ig]  = Ug0[ig];
     H_0[ig]  = 0.0;
     R_0[ig]  = Rg0[ig];
     D_0[ig]  = Dg0[ig];
     //vacc (all start empty)
     V_0[ig] = 0.0;
-    Ev1_0[ig] = 0.0; Ev2_0[ig] = 0.0;
-    Iv1_0[ig] = 0.0; Iv2_0[ig] = 0.0;
-    Uv1_0[ig] = 0.0; Uv2_0[ig] = 0.0;
+    Ev_0[ig] = 0.0;
+    Iv_0[ig] = 0.0;
+    Uv_0[ig] = 0.0;
     Hv_0[ig]  = 0.0;
     Rv_0[ig]  = 0.0; Dv_0[ig] = 0.0;
     Vc_0[ig]  = 0.0; Cc_0[ig] = 0.0; Ccv_0[ig] = 0.0;
@@ -150,17 +144,17 @@ List model(List parscpp) {
   double yas, ua, ha, mHa, rrepa, cmi;
   double rVas, ve_i, ve_y, ve_h, ve_m;
   //unvacc temps
-  double Sat, E1at, E2at, U1at, U2at, I1at, I2at, Hat, Rat, Dat;
+  double Sat, Eat, Uat, Iat, Hat, Rat, Dat;
   //vacc temps
-  double Vat, Ev1at, Ev2at, Uv1at, Uv2at, Iv1at, Iv2at, Hvat, Rvat, Dvat;
+  double Vat, Evat, Uvat, Ivat, Hvat, Rvat, Dvat;
   //flows
   double FOI, FOIS, FOIvV;
-  double rE1, rE2, rU1, rU2, rI1, rI2, rHo;
-  double rEv1, rEv2, rUv1, rUv2, rIv1, rIv2, rHvo;
+  double rEo, rUo, rIo, rHo;
+  double rEvo, rUvo, rIvo, rHvo;
   double dVin, dEin, dIin, dUin, dHin;
   double dEvin, dIvin, dUvin, dHvin;
-  double dS, dE1, dE2, dI1, dI2, dH, dU1, dU2, dR, dD, dCc;
-  double dV, dEv1, dEv2, dIv1, dIv2, dHv, dUv1, dUv2, dRv, dDv, dCcv, dVc;
+  double dS, dE, dI, dH, dU, dR, dD, dCc;
+  double dV, dEv, dIv, dHv, dUv, dRv, dDv, dCcv, dVc;
   int    icm, ig2;
 
   for (int it = 0; it < (nt-1); it++) {
@@ -182,16 +176,16 @@ List model(List parscpp) {
       ve_m  = VE_mort[ig];
 
       Sat  =  S_0[ig];
-      E1at = E1_0[ig]; E2at = E2_0[ig];
-      I1at = I1_0[ig]; I2at = I2_0[ig];
-      U1at = U1_0[ig]; U2at = U2_0[ig];
+      Eat  =  E_0[ig];
+      Iat  =  I_0[ig];
+      Uat  =  U_0[ig];
       Hat  =  H_0[ig];
       Rat  =  R_0[ig]; Dat  =  D_0[ig];
 
       Vat   =  V_0[ig];
-      Ev1at = Ev1_0[ig]; Ev2at = Ev2_0[ig];
-      Iv1at = Iv1_0[ig]; Iv2at = Iv2_0[ig];
-      Uv1at = Uv1_0[ig]; Uv2at = Uv2_0[ig];
+      Evat  =  Ev_0[ig];
+      Ivat  =  Iv_0[ig];
+      Uvat  =  Uv_0[ig];
       Hvat  =  Hv_0[ig];
       Rvat  =  Rv_0[ig]; Dvat = Dv_0[ig];
 
@@ -203,75 +197,69 @@ List model(List parscpp) {
         icm = ig2*cmdim1 + ig;
         cmi = cm[icm];
         FOI += beta*ua*cmi*(
-          I1_0[ig2]  + I2_0[ig2]  + f*U1_0[ig2]  + f*U2_0[ig2] +
-          Iv1_0[ig2] + Iv2_0[ig2] + f*Uv1_0[ig2] + f*Uv2_0[ig2]
+          I_0[ig2]  + f*U_0[ig2] +
+          Iv_0[ig2] + f*Uv_0[ig2]
         ) * oNg[ig2];
       }}
 
       FOIS   = FOI*Sat;
       FOIvV  = FOI*Vat*(1.0 - ve_i);
 
-      rE1  = rE*E1at;     rE2  = rE*E2at;
-      rU1  = rU*U1at;     rU2  = rU*U2at;
-      rI1  = rI1I2*I1at;  rI2  = rI2R*I2at;
+      rEo  = rEI*Eat;
+      rUo  = rUR*Uat;
+      rIo  = rIR*Iat;
       rHo  = rH*Hat;
-      rEv1 = rE*Ev1at;    rEv2 = rE*Ev2at;
-      rUv1 = rU*Uv1at;    rUv2 = rU*Uv2at;
-      rIv1 = rI1I2*Iv1at; rIv2 = rI2R*Iv2at;
+      rEvo = rEI*Evat;
+      rUvo = rUR*Uvat;
+      rIvo = rIR*Ivat;
       rHvo = rH*Hvat;
 
       //daily incidence flows (for reporting)
       dEin  = dt*FOIS;
-      dIin  = dt*yas*rE2;
-      dUin  = dt*(1-yas)*rE2;
-      dHin  = dt*ha*rI2;
+      dIin  = dt*yas*rEo;
+      dUin  = dt*(1-yas)*rEo;
+      dHin  = dt*ha*rIo;
       dVin  = dt*rVas*Sat;                              //new vaccinations
       dEvin = dt*FOIvV;
-      dIvin = dt*yas*(1.0 - ve_y)*rEv2;
-      dUvin = dt*(1.0 - yas*(1.0 - ve_y))*rEv2;
-      dHvin = dt*ha*(1.0 - ve_h)*rIv2;
+      dIvin = dt*yas*(1.0 - ve_y)*rEvo;
+      dUvin = dt*(1.0 - yas*(1.0 - ve_y))*rEvo;
+      dHvin = dt*ha*(1.0 - ve_h)*rIvo;
 
       //--- unvacc chain ---
       dS  = dt*( -FOIS - rVas*Sat + rW*Vat + rW_nat*Rat + rW_nat*Rvat );
-      dE1 = dt*(  FOIS - rE1 );
-      dE2 = dt*(  rE1  - rE2 );
-      dI1 = dt*(  yas*rE2 - rI1 );
-      dI2 = dt*(  rI1  - rI2 );
-      dU1 = dt*(  (1-yas)*rE2 - rU1 );
-      dU2 = dt*(  rU1  - rU2 );
-      dH  = dt*(  ha*rI2 - rHo );
-      dR  = dt*(  (1-ha)*rI2 + rU2 + (1.0-mHa)*rHo - rW_nat*Rat );
+      dE  = dt*(  FOIS - rEo );
+      dI  = dt*(  yas*rEo - rIo );
+      dU  = dt*(  (1-yas)*rEo - rUo );
+      dH  = dt*(  ha*rIo - rHo );
+      dR  = dt*(  (1-ha)*rIo + rUo + (1.0-mHa)*rHo - rW_nat*Rat );
       dD  = dt*(  mHa*rHo );
-      dCc = dt*(  yas*rE2*rrepa );
+      dCc = dt*(  yas*rEo*rrepa );
 
       //--- vacc chain ---
       dV   = dt*( rVas*Sat - FOIvV - rW*Vat );
-      dEv1 = dt*(  FOIvV - rEv1 );
-      dEv2 = dt*(  rEv1  - rEv2 );
-      dIv1 = dt*(  yas*(1.0 - ve_y)*rEv2 - rIv1 );
-      dIv2 = dt*(  rIv1  - rIv2 );
-      dUv1 = dt*(  (1.0 - yas*(1.0 - ve_y))*rEv2 - rUv1 );
-      dUv2 = dt*(  rUv1  - rUv2 );
-      dHv  = dt*(  ha*(1.0 - ve_h)*rIv2 - rHvo );
-      dRv  = dt*(  (1.0 - ha*(1.0 - ve_h))*rIv2 + rUv2 + (1.0 - mHa*(1.0 - ve_m))*rHvo - rW_nat*Rvat );
+      dEv  = dt*(  FOIvV - rEvo );
+      dIv  = dt*(  yas*(1.0 - ve_y)*rEvo - rIvo );
+      dUv  = dt*(  (1.0 - yas*(1.0 - ve_y))*rEvo - rUvo );
+      dHv  = dt*(  ha*(1.0 - ve_h)*rIvo - rHvo );
+      dRv  = dt*(  (1.0 - ha*(1.0 - ve_h))*rIvo + rUvo + (1.0 - mHa*(1.0 - ve_m))*rHvo - rW_nat*Rvat );
       dDv  = dt*(  mHa*(1.0 - ve_m)*rHvo );
-      dCcv = dt*(  yas*(1.0 - ve_y)*rEv2*rrepa );
+      dCcv = dt*(  yas*(1.0 - ve_y)*rEvo*rrepa );
       dVc  = dt*(  rVas*Sat );  //cumulative doses
 
       //--- update ---
       S_0[ig]  = Sat  + dS;
-      E1_0[ig] = E1at + dE1; E2_0[ig] = E2at + dE2;
-      I1_0[ig] = I1at + dI1; I2_0[ig] = I2at + dI2;
-      U1_0[ig] = U1at + dU1; U2_0[ig] = U2at + dU2;
+      E_0[ig]  = Eat  + dE;
+      I_0[ig]  = Iat  + dI;
+      U_0[ig]  = Uat  + dU;
       H_0[ig]  = Hat  + dH;
       R_0[ig]  = Rat  + dR;
       D_0[ig]  = Dat  + dD;
       Cc_0[ig] = Cc_0[ig] + dCc;
 
       V_0[ig]   = Vat   + dV;
-      Ev1_0[ig] = Ev1at + dEv1; Ev2_0[ig] = Ev2at + dEv2;
-      Iv1_0[ig] = Iv1at + dIv1; Iv2_0[ig] = Iv2at + dIv2;
-      Uv1_0[ig] = Uv1at + dUv1; Uv2_0[ig] = Uv2at + dUv2;
+      Ev_0[ig]  = Evat  + dEv;
+      Iv_0[ig]  = Ivat  + dIv;
+      Uv_0[ig]  = Uvat  + dUv;
       Hv_0[ig]  = Hvat  + dHv;
       Rv_0[ig]  = Rvat  + dRv;
       Dv_0[ig]  = Dvat  + dDv;

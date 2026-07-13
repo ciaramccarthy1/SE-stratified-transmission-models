@@ -72,15 +72,12 @@ pa<-vector(); for (i in 1:na){pa[i]=sum(demog2021$Population[which(demog2021$Age
 pars$ageons <- pa
 
 
-## Initial state: S, E1:2, I1:2, U1:2, R, D
+## Initial state: S, E, I, U, R, D  (single-stage, no Erlang)
 oNg  <- vector();   # 1/Population
 Sg0  <- vector();   # Susceptible - Initial population, unless there's acquired immunity
-E1g0 <- rep(0,ng);  # Exposed     - seed of epidemic
-E2g0 <- rep(0,ng);  # Exposed
-U1g0 <- rep(0,ng);  # Pre-clinical cases
-U2g0 <- rep(0,ng);  # Pre-clinical cases
-I1g0 <- rep(0,ng);  # Sub-clinical cases
-I2g0 <- rep(0,ng);  # clinical cases
+Eg0  <- rep(0,ng);  # Exposed     - seed of epidemic
+Ug0  <- rep(0,ng);  # Subclinical (asymptomatic) cases
+Ig0  <- rep(0,ng);  # Clinical cases
 Rg0  <- rep(0,ng);  # Recovered
 Dg0  <- rep(0,ng);  # Dead
 # One row per (IMD, age) in demog2021 - look up by filter
@@ -101,8 +98,8 @@ Npop = sum(1/oNg);
 
   
 # pars: age 30 to 39, imd=1, 1/100,000 latent infections
-E1g0 = (1/oNg)*pars$pE1g0
-Sg0  = Sg0 - E1g0
+Eg0 = (1/oNg)*pars$pE1g0
+Sg0 = Sg0 - Eg0
 
 
 ## R0 and average contacts
@@ -115,7 +112,7 @@ print(paste0("Assuming R0 = ", pars$R0 ,"... beta is ", round(betanew,4)) )
 # Note: pars already contains h, mH, rH (and for vacc: vcov, VE_inf/sym/hosp/sev, rV, rW, rW_nat) - they flow through via within().
 parscpp45 = within(parscpp45 <- pars, {
                  cm=as.vector(cm45); cmdim1=cm45dim1; beta=betanew;
-                 Sg0=Sg0; E1g0=E1g0; E2g0=E2g0; I1g0=I1g0; I2g0=I2g0; U1g0=U1g0; U2g0=U2g0;
+                 Sg0=Sg0; Eg0=Eg0; Ig0=Ig0; Ug0=Ug0;
                  Rg0=Rg0; Dg0=Dg0; oNg=oNg })
 #  for output
 parsum = parscpp45
