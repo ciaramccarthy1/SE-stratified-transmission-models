@@ -1,5 +1,4 @@
 #pipeline SEIRD Rcpp
-
 require(bench)
 require(magrittr)
 require(ggplot2)
@@ -8,9 +7,7 @@ require(gridExtra)
 require(Rcpp)
 require(tidyverse)
 
-
 #TODO: vaccination refinement, Risk groups
-
 
 ### folders
 input_dir0 <- here()
@@ -25,25 +22,15 @@ output_dir <- here()
 TODAY      <- format(Sys.Date(), "%d-%m-%Y")
 }
 
-
 #Disease choice
 #source(paste0(source_dir,"/setup.r"))
 
+## Contact matrix is read below, after pars.
 
-## Contact matrix (square, ng x ng where ng = na*nimd)
-# Built from Reconnect base_matrix.csv by codes/prepare_model_inputs.R.
-cm45<-(as.matrix(read.csv(paste0(input_dir,"/Mas50.csv"),header=F))) # removes name of columns
-cm45dim1 = dim(cm45)[1]
-
-
-## Parameters
+## Parameters 
 if(pset$Vaccination==0){
-   if(pset$Disease=="COVID-19")    source(paste0(source_dir,"/parsC_.r"))
-   if(pset$Disease=="Influenza")   source(paste0(source_dir,"/parsF_.r"))
    if(pset$Disease=="RSV-illness") source(paste0(source_dir,"/parsR_.r"))
 }else{
-   if(pset$Disease=="COVID-19")    source(paste0(source_dir,"/parsCv_.r"))
-   if(pset$Disease=="Influenza")   source(paste0(source_dir,"/parsFv_.r"))
    if(pset$Disease=="RSV-illness") source(paste0(source_dir,"/parsRv_.r"))
 }
 # Scenario hook: codes/scenarios.R sets `scenario_overrides` as a named list
@@ -56,27 +43,35 @@ print(paste0("Vaccination: ", pars$Vaccination))
 print(paste0("Incidence  : ", pars$Incidence))
 ##pars$rV=0 #testing vs non-vaccine code
 
-
-## Demography
-# Built from ONS LSOA SYA + IoD 2025 by codes/prepare_model_inputs.R.
-demog2021 <- read.csv(paste0(input_dir,"/demographics_10age.csv"),header=T)
 # number of age groups
 na   = pars$na
 # number of SES
 nimd = pars$nimd
 # number of groups
 ng   = na*nimd
+
+## Contact matrix (ng x ng): David's transmission matrix (cnt_matrix_p, built by
+## codes/build_david_contacts.R -> Mas45_david.csv) when pset$DavidContacts=TRUE,
+## else the Reconnect matrix (Mas45.csv).
+cm_file <- if (isTRUE(pset$DavidContacts)) "/Mas45_david.csv" else "/Mas45.csv"
+cm45<-(as.matrix(read.csv(paste0(input_dir, cm_file),header=F)))
+cm45dim1 = dim(cm45)[1]
+
+## Demography
+## Demographics: real ONS by default, or David's stationary populationAgeGroup when
+## pset$DavidDemog=TRUE (to reproduce David's results; built by build_david_contacts.R).
+demog_file <- if (isTRUE(pset$DavidDemog)) "/demographics_9age_david.csv" else "/demographics_9age.csv"
+demog2021 <- read.csv(paste0(input_dir, demog_file),header=T)
 # proportion by age (summed across IMD)
 pa<-vector(); for (i in 1:na){pa[i]=sum(demog2021$Population[which(demog2021$Age==pars$ages[i])])/sum(demog2021$Population)}
 # Assign back into pars so anything reading pars$ageons gets the CSV-derived value
 pars$ageons <- pa
 
-
 ## Initial state: S, E, I, U, R, D  (single-stage, no Erlang)
 oNg  <- vector();   # 1/Population
 Sg0  <- vector();   # Susceptible - Initial population, unless there's acquired immunity
 Eg0  <- rep(0,ng);  # Exposed     - seed of epidemic
-Ug0  <- rep(0,ng);  # Subclinical (asymptomatic) cases
+Ug0  <- rep(0,ng);  # Asymptomatic cases
 Ig0  <- rep(0,ng);  # Clinical cases
 Rg0  <- rep(0,ng);  # Recovered
 Dg0  <- rep(0,ng);  # Dead
@@ -96,29 +91,64 @@ for (ia in 1:na) { for (is in 1:nimd) {
     Ns[is] = Ns[is] + 1/oNg[(is-1)*na + ia] }}
 Npop = sum(1/oNg);
 
-  
-# pars: age 30 to 39, imd=1, 1/100,000 latent infections
-Eg0 = (1/oNg)*pars$pE1g0
-Sg0 = Sg0 - Eg0
+
+## Season-start initial conditions
+if (pars$Disease == "RSV-illness") {
+  ## From David's rsvie post-burn-in state (all exposure groups). Collapse his 25
+  ## age bands -> our 9 (weighted by his band pop Ntot over age overlap), then
+  ## apply the fractions to our demographics_9age.csv populations. Our bands are
+  ## aligned to David's so each of his 25 bands nests cleanly in one of ours.
+  ## Pairs with the age-susceptibility u = sigma_a in parsR_.r (same exposure mix).
+  suppressPackageStartupMessages(require(data.table))
+  david <- data.table::fread(paste0(input_dir, "/init_conditions_allgroups.csv"))
+  data.table::setorder(david, age_group); stopifnot(nrow(david) == 25)
+  # David's 25 band edges [lo,hi) in years (uk_data$ageGroupBoundary; last hi=90)
+  d_lo <- c((0:11)/12, 1,2,3,4, 5,10, 15,25,35,45,55,65,75)
+  d_hi <- c((1:12)/12, 2,3,4,5, 10,15, 25,35,45,55,65,75,90)
+  # Our 9 David-aligned bands (pars$ages order)
+  o_lo <- c(0,5,15,25,35,45,55,65,75)
+  o_hi <- c(5,15,25,35,45,55,65,75,90)
+  wmean <- function(x, w) if (sum(w) > 0) sum(x*w)/sum(w) else 0
+  fcols <- c("frac_R","frac_E","frac_A","frac_I")
+  ic10 <- sapply(fcols, function(cc) vapply(1:na, function(b) {
+    ov <- pmax(0, pmin(o_hi[b], d_hi) - pmax(o_lo[b], d_lo))   # overlap years
+    wmean(david[[cc]], david$Ntot * ov/(d_hi - d_lo)) }, numeric(1)))
+  for (is in 1:nimd) for (ia in 1:na) {
+    g   <- (is-1)*na + ia
+    pop <- 1/oNg[g]
+    Rg0[g] <- pop * ic10[ia, "frac_R"]
+    Eg0[g] <- pop * ic10[ia, "frac_E"]
+    Ug0[g] <- pop * ic10[ia, "frac_A"]
+    Ig0[g] <- pop * ic10[ia, "frac_I"]
+    Sg0[g] <- pop - Rg0[g] - Eg0[g] - Ug0[g] - Ig0[g]   # = pop*frac_S, exact conservation
+  }
+} else {
+  # COVID-19 / Influenza: single-cell latent seed (age 30-39, imd=1)
+  Eg0 = (1/oNg)*pars$pE1g0
+  Sg0 = Sg0 - Eg0
+}
 
 
 ## R0 and average contacts
 source(paste0(source_dir,"/R0_.r"))      #outputs av contact rate
 betanew = R0(pars,as.numeric(pars$R0),0) #default 2.5
+# Fitting hook: set pars$beta_override (e.g. via scenario_overrides) to use a
+# directly-chosen beta instead of the R0-derived value (for eyeball fitting).
+if (!is.null(pars$beta_override)) betanew <- as.numeric(pars$beta_override)
 print(paste0("Assuming R0 = ", pars$R0 ,"... beta is ", round(betanew,4)) )
-
 
 ## Parameters
 # Note: pars already contains h, mH, rH (and for vacc: vcov, VE_inf/sym/hosp/sev, rV, rW, rW_nat) - they flow through via within().
 parscpp45 = within(parscpp45 <- pars, {
                  cm=as.vector(cm45); cmdim1=cm45dim1; beta=betanew;
                  Sg0=Sg0; Eg0=Eg0; Ig0=Ig0; Ug0=Ug0;
-                 Rg0=Rg0; Dg0=Dg0; oNg=oNg })
+                 Rg0=Rg0; Dg0=Dg0; oNg=oNg;
+                 # recovery rates age-varying (length na); rep_len tolerates scalars
+                 rIR=rep_len(as.numeric(rIR), na); rUR=rep_len(as.numeric(rUR), na) })
 #  for output
 parsum = parscpp45
 #  remove what's not needed for Rcpp:
 parscpp45 <- parscpp45 %>% magrittr::inset(c('age', 'ages', 'ageons', 'm'), NULL)  #parscpp45[['age']] <- NULL; etc
-
 
 ## Model output (for the proposed parameters)
 if (pset$COMPILE==1) {
@@ -223,24 +253,6 @@ dev.off()
 if (pset$platform=="repo" & pars$Disease=="RSV-illness") p3R<-p3
 if (pset$platform=="repo" & pars$Disease=="Influenza")   p3F<-p3
 if (pset$platform=="repo" & pars$Disease=="COVID-19")    p3C<-p3
-
-
-## fig 4 - all diseases (currently DISABLED: only RSV runs in main_repo.R).
-## To re-enable: uncomment the Influenza + COVID-19 blocks in main_repo.R AND
-## this section below. References p1C/p2C/p3C/p1F/p2F/p3F that are only set
-## when those diseases are also run.
-# if (pset$platform=="repo" & pars$Disease=="RSV-illness"){
-#   filename=paste0("All_diseases_",area,"_SEIRD_epidemics_",daily,pset$Namevacc,TODAY)
-#   pdf(file=paste0(output_dir,"/",filename,".pdf"))
-#      gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3)
-#   dev.off()
-#
-#   gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3)
-#
-#   ggsave(paste0(output_dir,"/",filename,".png"),
-#          gridExtra::grid.arrange(p1C,p2C,p3C,p1F,p2F,p3F,p1R,p2R,p3R, nrow=3, ncol=3),
-#          device = "png", width = 8000, height = 3931, units = "px", dpi = 600)
-# }
 
 }##FIGURES
 

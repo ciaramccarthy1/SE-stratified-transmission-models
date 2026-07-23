@@ -1,7 +1,7 @@
 ################################################################################
 # Download raw input data files for the SE-stratified transmission model.
 #
-# Files downloaded by this script (see data/SOURCES.md for full provenance):
+# Files downloaded by this script (see data/SOURCES.md):
 #   data/base_matrix.csv                : age x IMD contact matrix
 #                                         (Reconnect survey via lucy-gf/imd_matrices)
 #   data/ons_lsoa_syoa_2022-2024.xlsx   : LSOA population by single year of age + sex
@@ -10,9 +10,8 @@
 #                                         (GOV.UK English Indices of Deprivation 2025)
 
 #
-# Downstream prep is done by codes/prepare_model_inputs.R: it joins
-# ons_lsoa_syoa with iod2025_lsoa_ranks on LSOA code, aggregates to IMD
-# quintile x model age bands, and writes data/demographics_10age.csv.
+# codes/prepare_model_inputs.R: joins ons_lsoa_syoa with iod2025_lsoa_ranks on LSOA code, 
+# aggregates to IMD quintile x model age bands, and writes data/demographics_9age.csv.
 #
 ################################################################################
 
@@ -83,7 +82,7 @@ fetch_if_missing(
 ## --- Source-paper per-age parameter tables (RSV) ---------------------------
 ## Feeds: u, y, m, h, mH, rrep per age in parsR_.r / parsRv_.r.
 
-## RSV - Hodgson 2020 (Lancet ID); model code may live on GitHub
+## RSV - Hodgson 2020 (Lancet ID) - get from GitHub
 # fetch_if_missing(
 #   url   = "TODO Hodgson 2020 supp / GitHub: per-age u, y, IFR, hospitalisation",
 #   path  = file.path(input_dir, "hodgson2020_rsv.csv"),
@@ -99,12 +98,10 @@ fetch_if_missing(
 ## --- England RSV vaccination uptake by IMD decile ---------------------
 ## Source: UKHSA "RSV older adults vaccination coverage in England" report.
 ## Updated periodically; URL below points to the January 2026 report.
-## Note: published table includes routine + catch-up cohorts. Routine cohort
-## uptake is currently lower than the all-cohort figure, so this will need
-## updating with cohort-specific values when separable.
+## TO DO: published table includes routine + catch-up cohorts. Routine cohort
+## uptake is currently lower than the all-cohort figure - need to
+## update with cohort-specific values when separable.
 ## Feeds: vcov in parsRv_.r (currently uniform 100% in band 10 / 75+ only).
-##
-## We download the HTML page and parse the IMD-decile uptake table from it.
 rsv_uptake_url  <- paste0("https://www.gov.uk/government/statistics/",
                           "respiratory-syncytial-virus-rsv-older-adults-vaccination-coverage-in-england/",
                           "respiratory-syncytial-virus-rsv-older-adults-vaccination-coverage-in-england-january-2026-report")
@@ -117,8 +114,6 @@ fetch_if_missing(
 
 rsv_uptake_csv <- file.path(input_dir, "rsv_uptake_by_imd_decile.csv")
 if (!file.exists(rsv_uptake_csv)) {
-  # Parse the IMD-decile uptake table from the cached HTML.
-  # The relevant block is a table whose body contains the unique header "Deprivation deciles".
   .rsv_html <- paste(readLines(rsv_uptake_html, warn = FALSE), collapse = "\n")
   # Extract all <table>...</table> blocks individually, then pick the one containing "Deprivation deciles".
   .all_tables <- regmatches(.rsv_html,
@@ -145,20 +140,8 @@ if (!file.exists(rsv_uptake_csv)) {
 
 ## --- RSV hospital length-of-stay -------------------------------------------
 ## Feeds: rH in parsR_.r / parsRv_.r (currently 1/6 placeholder).
-## HES (Hospital Episode Statistics) is restricted; published reports give
-## aggregate RSV admission LOS by age and sometimes IMD.
-# fetch_if_missing(
-#   url   = "TODO NHS Digital HES: RSV LOS by age",
-#   path  = file.path(input_dir, "hes_rsv_los.csv"),
-#   label = "HES RSV LOS by age")
-
 
 ## --- Population-weighted contact aggregation -------------------------------
 ## prepare_model_inputs.R currently aggregates contact rates participant-side
-## with uniform mean (TODO -> population-weighted). The ONS LSOA single-year-
-## of-age data fetched above is sufficient to derive the per-5-year-band
-## populations needed; just wire it into prepare_model_inputs.R rather than
-## fetching anything new.
+## with uniform mean (TO DO -> population-weighted). 
 
-
-message("fetch_data.R: all raw inputs present and validated.")

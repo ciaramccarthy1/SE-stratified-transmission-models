@@ -25,15 +25,19 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 #include <array>
+#include <cmath>
 
 // [[Rcpp::export]]
 List model(List parscpp) {
 
   //natural history
-  const double beta( parscpp["beta"]);
-  const double rEI(  parscpp["rEI"]);         //latency E -> I/U (single stage, no Erlang)
-  const double rIR(  parscpp["rIR"]);         //recovery I -> R/H (single stage, no Erlang)
-  const double rUR(  parscpp["rUR"]);         //recovery U -> R   (single stage, no Erlang)
+  const double beta0( parscpp["beta"]);       //baseline transmission (seasonal multiplier applied per day)
+  const double b1(   parscpp["b1"]);          //seasonal amplitude (Gaussian pulse, David rsvie)
+  const double phi(  parscpp["phi"]);         //seasonal phase (fraction of year at peak)
+  const double psi(  parscpp["psi"]);         //seasonal width (fraction of year)
+  const double rEI(  parscpp["rEI"]);              //latency E -> I/U (single stage, no Erlang)
+  const std::vector<double> rIR( parscpp["rIR"]);  //recovery I -> R/H rate, by age (David exposure-group avg)
+  const std::vector<double> rUR( parscpp["rUR"]);  //recovery U -> R   rate, by age
   const double f(    parscpp["f"]);
   const double rH(   parscpp["rH"]);
 
@@ -161,6 +165,10 @@ List model(List parscpp) {
     day0 = day;
     day  = 1 + (int) time[it];
 
+    //seasonal forcing (Gaussian pulse, David rsvie): beta(t) = beta0 * season
+    double t1   = std::fmod(time[it], 365.0);
+    double beta = beta0*(1.0 + b1*(1.0 + std::exp(-(t1/365.0-phi)*(t1/365.0-phi)/(2.0*psi*psi))));
+
     for (int is = 0; is < ns; is++) {
     for (int ia = 0; ia < na; ia++) {
       ig    = is*na + ia;
@@ -206,12 +214,12 @@ List model(List parscpp) {
       FOIvV  = FOI*Vat*(1.0 - ve_i);
 
       rEo  = rEI*Eat;
-      rUo  = rUR*Uat;
-      rIo  = rIR*Iat;
+      rUo  = rUR[ia]*Uat;
+      rIo  = rIR[ia]*Iat;
       rHo  = rH*Hat;
       rEvo = rEI*Evat;
-      rUvo = rUR*Uvat;
-      rIvo = rIR*Ivat;
+      rUvo = rUR[ia]*Uvat;
+      rIvo = rIR[ia]*Ivat;
       rHvo = rH*Hvat;
 
       //daily incidence flows (for reporting)

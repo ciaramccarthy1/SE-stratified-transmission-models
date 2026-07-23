@@ -9,7 +9,6 @@ na   <- pars$na
 nimd <- pars$nimd
 
 
-
 ## Average contact rate of cm45
 #   contact rate of participant across contacts
 cp <- vector(); for (i in 1:(na*nimd)){ cp[i]=sum(cm45[i,])}  #cp #[1] 8.053193 14.369821 15.171069 11.534715 10.880512 10.948698  8.581716  7.393931  5.250907  8.945841 ...
@@ -36,22 +35,23 @@ print(paste0("Average contact rate of cm45: ", round(cav,4), "/day")) #[1] 10.80
 #   max(eigen(cm45)$values) # [1] 46.05446
 
 ## NGM
-#Erlang has no effect on R0 without vital dynamics (mu=0)
-#https://www.biorxiv.org/content/10.1101/319574v1.full.pdf
 
 R0 <- function(pars,R0assumed=2.5,printout=1){
   
 ng    = na*nimd
 u45   = rep(pars$u,nimd)
 y45   = pars$y45
-orIR  = 1/pars$rIR          
-orUR  = 1/pars$rUR          
-beta0 = pars$beta            
-fu    = pars$f              
+# age-varying infectious periods (rIR/rUR may be scalar or length-na vectors)
+orIRa = 1/rep_len(as.numeric(pars$rIR), na)
+orURa = 1/rep_len(as.numeric(pars$rUR), na)
+beta0 = pars$beta
+fu    = pars$f
 ngm   = cm45
 
-for (k in 1:ng){ 
+for (k in 1:ng){
   y_k=y45[k]
+  ak  = ((k-1) %% na) + 1        # age of source (infectious) group k
+  orIR = orIRa[ak]; orUR = orURa[ak]
   for (j in 1:ng) {
     ngm[j,k] = beta0*u45[j]*cm45[j,k]*( y_k*orIR + fu*(1-y_k)*orUR) }}
 
@@ -59,7 +59,7 @@ for (k in 1:ng){
 EVs = eigen(ngm)$values
 R00 = max(Re(EVs[which(Im(EVs)==0)]))
 
-# beta given R0assumed
+# beta given R0 assumed
 beta = R0assumed/(R00/beta0)
 if(printout==1) print(paste0("Assuming R0 = ", R0assumed, ", then beta = ", round(beta,4), " /day"))
 

@@ -1,8 +1,10 @@
 ################################################################################
-# Prepare derived 10-age-band model inputs from raw downloads.
+# Prepare derived 9-age-band model inputs from raw downloads.
 # Pairs with codes/fetch_data.R (which downloads the raw files).
 #
-# Model age bands: 0-4, 5-14, 15-19, 20-29, 30-39, 40-49, 50-59, 60-64, 65-74, 75+
+# Model age bands (aligned to David rsvie adult bands so his 25 bands and
+# Reconnect's 5-year bands both nest cleanly):
+#   0-4, 5-14, 15-24, 25-34, 35-44, 45-54, 55-64, 65-74, 75+
 #
 # Inputs (all sourced by fetch_data.R):
 #   - data/base_matrix.csv               : Reconnect long-form 5-IMD x 16-age
@@ -11,9 +13,9 @@
 #   - data/iod2025_lsoa_ranks_deciles.csv: IoD 2025 LSOA -> IMD decile lookup
 #
 # Outputs:
-#   - data/Mas50.csv             : 50x50 wide contact matrix
+#   - data/Mas45.csv             : 45x45 wide contact matrix
 #                                  (rows = participant ig = is*na + ia)
-#   - data/demographics_10age.csv: 10-band x 5-IMD-quintile demographics
+#   - data/demographics_9age.csv : 9-band x 5-IMD-quintile demographics
 #
 # Aggregation notes for the contact matrix:
 #   Participant-side merge of {a1, a2} -> A: population-weighted average
@@ -28,31 +30,28 @@
 input_dir  <- file.path("data")
 output_dir <- file.path("data")
 
-# Reconnect 16 bands (sorted in epidemiologically meaningful order)
+# Reconnect 16 bands 
 reconnect_ages <- c("0-4", "5-9", "10-14", "15-19", "20-24", "25-29",
                "30-34", "35-39", "40-44", "45-49", "50-54", "55-59",
                "60-64", "65-69", "70-74", "75+")
-# New 10 bands - each is an exact aggregation of one or two of Reconnect bands
-new_ages  <- c("0-4", "5-14", "15-19", "20-29", "30-39", "40-49",
-               "50-59", "60-64", "65-74", "75+")
+# 9 bands (aligned with David's) - each is an exact aggregation of Reconnect bands
+new_ages  <- c("0-4", "5-14", "15-24", "25-34", "35-44",
+               "45-54", "55-64", "65-74", "75+")
 # Mapping: new_age -> the reconnect_ages that compose it
 new_to_reconnect <- list(
   "0-4"   = "0-4",
   "5-14"  = c("5-9", "10-14"),
-  "15-19" = "15-19",
-  "20-29" = c("20-24", "25-29"),
-  "30-39" = c("30-34", "35-39"),
-  "40-49" = c("40-44", "45-49"),
-  "50-59" = c("50-54", "55-59"),
-  "60-64" = "60-64",
+  "15-24" = c("15-19", "20-24"),
+  "25-34" = c("25-29", "30-34"),
+  "35-44" = c("35-39", "40-44"),
+  "45-54" = c("45-49", "50-54"),
+  "55-64" = c("55-59", "60-64"),
   "65-74" = c("65-69", "70-74"),
   "75+"   = "75+")
 
 ## --- 1. Contact matrix ------------------------------------------------------
 
-# Raw inputs are fetched (and cached) by codes/fetch_data.R.
-# Sourcing it here makes scaffold idempotent: re-running this script "just works"
-# whether you've fetched before or not.
+# Raw inputs are fetched by codes/fetch_data.R.
 source(file.path("codes", "fetch_data.R"))
 
 reconnect_path <- file.path(input_dir, "base_matrix.csv")
@@ -62,11 +61,10 @@ stopifnot(nrow(cm_long) == 5 * 5 * length(reconnect_ages) * length(reconnect_age
 n_imd_p <- length(unique(cm_long$Participant_IMD))
 n_imd_c <- length(unique(cm_long$Contact_IMD))
 stopifnot(n_imd_p == 5, n_imd_c == 5)
-na_new  <- length(new_ages)   # 10
+na_new  <- length(new_ages)   # 9
 nimd    <- 5
-ng_new  <- na_new * nimd      # 50
+ng_new  <- na_new * nimd      # 45
 
-# Build a fast lookup: for each (participant_IMD, contact_IMD, p_age, c_age) -> mean rate
 key <- function(pi, ci, pa, ca) paste(pi, ci, pa, ca, sep = "|")
 mean_lookup <- setNames(cm_long$mean,
                         with(cm_long, key(Participant_IMD, Contact_IMD,
@@ -94,17 +92,17 @@ for (is_p in 1:nimd) {            # participant IMD
   }
 }
 
-write.table(cm50, file.path(output_dir, "Mas50.csv"),
+write.table(cm50, file.path(output_dir, "Mas45.csv"),
             sep = ",", row.names = FALSE, col.names = FALSE)
 cat(sprintf("Wrote %s: %d x %d (from Reconnect base_matrix.csv)\n",
-            "data/Mas50.csv", nrow(cm50), ncol(cm50)))
+            "data/Mas45.csv", nrow(cm50), ncol(cm50)))
 
 ## --- 2. Demographics (from ONS LSOA SYA + IoD 2025) -------------------------
 ## Build a (IMD quintile x model age band) population table by joining the
 ## ONS LSOA-level single-year-of-age data to the IoD 2025 LSOA -> decile
 ## lookup, then aggregating.
 ##   Decile -> Quintile: quintile = ceiling(decile / 2)
-##   (deciles 1-2 -> quintile 1 most deprived, ..., 9-10 -> quintile 5 least)
+##   (deciles 1-2 -> quintile 1 most deprived, 9-10 -> quintile 5 least)
 
 suppressPackageStartupMessages(library(readxl))
 
@@ -122,23 +120,22 @@ pop_sya  <- sapply(sya_ages, function(a)
   as.numeric(ons[[paste0("F", a)]]) + as.numeric(ons[[paste0("M", a)]]))
 colnames(pop_sya) <- sya_ages
 
-# Aggregate single-year ages into the 10 model bands
+# Aggregate single-year ages into the 9 model bands 
 band_def <- list(
   "0 to 4"   = 0:4,
   "5 to 14"  = 5:14,
-  "15 to 19" = 15:19,
-  "20 to 29" = 20:29,
-  "30 to 39" = 30:39,
-  "40 to 49" = 40:49,
-  "50 to 59" = 50:59,
-  "60 to 64" = 60:64,
+  "15 to 24" = 15:24,
+  "25 to 34" = 25:34,
+  "35 to 44" = 35:44,
+  "45 to 54" = 45:54,
+  "55 to 64" = 55:64,
   "65 to 74" = 65:74,
   "75+"      = 75:90)
 band_names <- names(band_def)
 pop_band <- sapply(band_def, function(ages)
   rowSums(pop_sya[, as.character(ages), drop = FALSE]))
 
-# LSOA-level pop-by-band
+# LSOA-level popn-by-band
 lsoa_demog <- data.frame(
   lsoa = ons[["LSOA 2021 Code"]],
   pop_band,
@@ -156,7 +153,7 @@ lsoa_imd <- data.frame(
   quintile = ceiling(iod[[decile_col]] / 2),          # decile 1-2 -> quintile 1
   stringsAsFactors = FALSE)
 
-# Inner join: keep only LSOAs present in both (England only, since IoD is England)
+# Inner join: keep only LSOAs present in both (England only)
 joined <- merge(lsoa_demog, lsoa_imd, by = "lsoa")
 cat(sprintf("Joined %d LSOAs (England) on (LSOA 2021 code)\n", nrow(joined)))
 rm(ons, pop_sya, pop_band, lsoa_demog, iod, lsoa_imd)
@@ -175,10 +172,10 @@ demog10 <- do.call(rbind, lapply(1:5, function(q) {
 }))
 rownames(demog10) <- NULL
 
-write.csv(demog10, file.path(output_dir, "demographics_10age.csv"),
+write.csv(demog10, file.path(output_dir, "demographics_9age.csv"),
           row.names = FALSE)
 cat(sprintf("Wrote %s: %d rows (expected %d)\n",
-            "data/demographics_10age.csv",
+            "data/demographics_9age.csv",
             nrow(demog10), 5 * length(band_names)))
 
 ## --- 3. RSV uptake by IMD quintile (population-weighted) -------------------
