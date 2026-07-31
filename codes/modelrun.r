@@ -53,8 +53,14 @@ ng   = na*nimd
 ## Contact matrix (ng x ng): David's transmission matrix (cnt_matrix_p, built by
 ## codes/build_david_contacts.R -> Mas45_david.csv) when pset$DavidContacts=TRUE,
 ## else the Reconnect matrix (Mas45.csv).
-cm_file <- if (isTRUE(pset$DavidContacts)) "/Mas45_david.csv" else "/Mas45.csv"
-cm45<-(as.matrix(read.csv(paste0(input_dir, cm_file),header=F)))
+# Ensemble hook: pars$cm_override (a ng x ng matrix) bypasses the file read
+# (used by codes/uncertainty_ensemble.R to pass a per-posterior-draw contact matrix).
+if (!is.null(pars$cm_override)) {
+  cm45 <- as.matrix(pars$cm_override); dimnames(cm45) <- NULL
+} else {
+  cm_file <- if (isTRUE(pset$DavidContacts)) "/Mas45_david.csv" else "/Mas45.csv"
+  cm45 <- as.matrix(read.csv(paste0(input_dir, cm_file),header=F))
+}
 cm45dim1 = dim(cm45)[1]
 
 ## Demography
@@ -100,7 +106,10 @@ if (pars$Disease == "RSV-illness") {
   ## aligned to David's so each of his 25 bands nests cleanly in one of ours.
   ## Pairs with the age-susceptibility u = sigma_a in parsR_.r (same exposure mix).
   suppressPackageStartupMessages(require(data.table))
-  david <- data.table::fread(paste0(input_dir, "/init_conditions_allgroups.csv"))
+  # Ensemble hook: pars$ic_states (25-band data.frame with age_group, Ntot,
+  # frac_R/frac_E/frac_A/frac_I) bypasses the file read (per-posterior-draw IC).
+  david <- if (!is.null(pars$ic_states)) data.table::as.data.table(pars$ic_states) else
+           data.table::fread(paste0(input_dir, "/init_conditions_allgroups.csv"))
   data.table::setorder(david, age_group); stopifnot(nrow(david) == 25)
   # David's 25 band edges [lo,hi) in years (uk_data$ageGroupBoundary; last hi=90)
   d_lo <- c((0:11)/12, 1,2,3,4, 5,10, 15,25,35,45,55,65,75)

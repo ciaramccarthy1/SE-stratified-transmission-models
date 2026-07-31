@@ -21,6 +21,7 @@ output/
 
 # Writeup documents (local working docs, not tracked)
 model_restructure_summary.md
+paper_calibration.md
 model_restructure_summary.html
 model_diagram.html
 model_diagram.md

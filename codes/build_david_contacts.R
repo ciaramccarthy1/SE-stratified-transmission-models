@@ -8,8 +8,8 @@
 #   david_pop25.csv                       : populationAgeGroup (25 bands)
 # Steps:
 #   1. Effective contacts C25 = cnt_p + qc*cnt_c  (qp = overall scale -> our beta0)
-#   2. Aggregate 25 -> our 9 bands: participant side (rows) = population-weighted
-#      mean; contact side (cols) = sum, splitting straddling bands by age overlap.
+#   2. Aggregate 25 -> our 9 bands: contact side = sum, participant side =
+#      population-weighted mean. Our bands are exact unions of David's (no straddling).
 #   3. Expand na -> na*5, HOMOGENEOUS across IMD:
 #        Cout[(s1,i),(s2,j)] = Cna[i,j] * N[s2,j]/N[j]    (our demographics)
 #      i.e. age-i contacts split across IMD by population share, independent of
@@ -25,17 +25,41 @@ cc  <- as.matrix(read.csv("data/david_cnt_c25.csv"))
 pop <- read.csv("data/david_pop25.csv")$pop
 C25 <- cp + qc*cc; dimnames(C25) <- NULL   # David's raw transmission matrix (no symmetrisation)
 
-## David's 25 band edges and our 9 model bands (years); 
+## --- Age-band edges (years) -------------------------------------------------
+## David has 25 bands: 12 monthly (0-1yr), yearly 1-4, 5-10, 10-15, then decadal.
+## We have 9. Our bands are EXACT UNIONS of David's (the edges coincide), so each
+## David band lies wholly inside exactly one of our bands - none straddle a
+## boundary. This makes the collapse exact (no interpolation).
 na   <- 9
-d_lo <- c((0:11)/12, 1,2,3,4, 5,10, 15,25,35,45,55,65,75)
-d_hi <- c((1:12)/12, 2,3,4,5, 10,15, 25,35,45,55,65,75,90)
-o_lo <- c(0,5,15,25,35,45,55,65,75); o_hi <- c(5,15,25,35,45,55,65,75,90)
-ov <- function(lo1,hi1,lo2,hi2) max(0, min(hi1,hi2)-max(lo1,lo2))
+d_lo <- c((0:11)/12, 1,2,3,4, 5,10, 15,25,35,45,55,65,75)   # David 25 band lower edges
+d_hi <- c((1:12)/12, 2,3,4,5, 10,15, 25,35,45,55,65,75,90)  # David 25 band upper edges
+o_lo <- c(0,5,15,25,35,45,55,65,75); o_hi <- c(5,15,25,35,45,55,65,75,90)  # our 9 band edges
 
-## re-bin 25 -> na (recipient popn-weighted mean; contact side split by overlap)
-P    <- outer(1:25,1:na, Vectorize(function(A,i) pop[A]*ov(d_lo[A],d_hi[A],o_lo[i],o_hi[i])/(d_hi[A]-d_lo[A])))
-Frac <- outer(1:25,1:na, Vectorize(function(B,j)        ov(d_lo[B],d_hi[B],o_lo[j],o_hi[j])/(d_hi[B]-d_lo[B])))
-Cna  <- sweep(t(P) %*% C25 %*% Frac, 1, colSums(P), "/")   # na x na contacts/person
+## --- Collapse the 25x25 matrix to our 9x9 -----------------------------------
+## A contact-matrix entry C[a,b] = mean contacts a person in band a makes with
+## band b (per person, per unit time). The two axes aggregate DIFFERENTLY:
+##   * contacted axis -> SUM: one person's contacts with a merged group equal the
+##       sum of their contacts with each of its sub-bands.
+##   * participant axis -> POPULATION-WEIGHTED MEAN: the average contacts of a
+##       merged group is the mean over its sub-bands, weighted by their sizes.
+
+# david_bands_in[[i]] = indices of David's 25 bands that fall inside our band i.
+# (Our bands are exact unions of David's, so each David band belongs to exactly one.)
+david_bands_in <- lapply(1:na, function(i) which(d_lo >= o_lo[i] & d_hi <= o_hi[i]))
+stopifnot(length(unlist(david_bands_in)) == 25,     # every David band is used...
+          !anyDuplicated(unlist(david_bands_in)))   # ...exactly once (bands nest cleanly)
+
+Cna <- matrix(0, na, na)
+for (i in 1:na) {                      # our PARTICIPANT band
+  A <- david_bands_in[[i]]             #   the David bands making it up
+  for (j in 1:na) {                    # our CONTACT band
+    B <- david_bands_in[[j]]           #   the David bands making it up
+    # for each participant sub-band A: SUM its contacts across the contact sub-bands B
+    contacts_per_A <- rowSums(C25[A, B, drop = FALSE])
+    # then take the population-weighted MEAN over the participant sub-bands
+    Cna[i, j] <- sum(pop[A] * contacts_per_A) / sum(pop[A])
+  }
+}
 
 ## expand na -> na*5, homogeneous across IMD (IMD-major: g=(s-1)*na+i)
 demog <- read.csv("data/demographics_9age.csv")
@@ -55,7 +79,7 @@ cat("Cna row sums (contacts/person by", na, "bands):\n"); print(round(rowSums(Cn
 ## david_pop25), split across IMD by ONS shares so the age TOTALS are David's while
 ## the model keeps its IMD structure. For REPRODUCING David's results only:
 ## set pset$DavidDemog <- TRUE (default FALSE uses real ONS demographics_9age.csv).
-david_age <- colSums(P)                       # David pop aggregated to our na bands
+david_age <- sapply(david_bands_in, function(idx) sum(pop[idx]))  # David pop per our band
 dpop      <- sweep(share, 2, david_age, "*")  # 5 x na: David age totals, ONS IMD split
 tot       <- sum(dpop)
 david_demog <- do.call(rbind, lapply(1:5, function(s) data.frame(
