@@ -33,9 +33,9 @@ o_nm <- factor(c("0-4","5-14","15-24","25-34","35-44","45-54","55-64","65-74","7
 ## --- model: symptomatic incidence by age (Iw_a), full 52-week season ---
 scenario_overrides <- list(beta_override=beta0, times=seq(0,364), nt=3641, nd=365)
 invisible(capture.output(source("codes/modelrun.r")))
-Iw_a <- mas$byaw$Iw_a                       # nd x 10 (daily symptomatic by age)
+Iw_a <- mas$byaw$Iw_a                       # nd x 9 (daily symptomatic by age)
 wk   <- ceiling(seq_len(nrow(Iw_a))/7)
-mod_wk <- apply(Iw_a, 2, function(col) tapply(col, wk, sum))   # 53 x 10
+mod_wk <- apply(Iw_a, 2, function(col) tapply(col, wk, sum))   # 53 x 9
 mod_wk <- mod_wk[as.integer(rownames(mod_wk))<=52, ]
 mod_df <- as.data.frame(mod_wk) |> setNames(as.character(o_nm)) |>
   mutate(week_no=1:52) |> pivot_longer(-week_no, names_to="band", values_to="cases") |>
