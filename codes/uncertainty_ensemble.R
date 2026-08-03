@@ -158,7 +158,7 @@ pA<-ggplot()+
     title=sprintf("By age (%d-year): our model 95%% CrI (grey band) vs David's rsvie runs (blue lines), David demographics",YRS))+
   theme_minimal(base_size=10)
 ggsave(sprintf("output/uncertainty_byage%s.png",suf),pA,
-       width=if(YRS==1)10 else 10,height=if(YRS==1)8.5 else 13,dpi=140)
+       width=if(YRS==1)10 else 17,height=if(YRS==1)8.5 else 13,dpi=140)
 
 cat(sprintf("\n=== %d-year total by band: ours vs David, median [2.5%%, 97.5%%] (thousands) ===\n",YRS))
 for(a in 1:na){
