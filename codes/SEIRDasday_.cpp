@@ -45,6 +45,12 @@ List model(List parscpp) {
   const std::vector<double> mH( parscpp["mH"]);    //mortality fraction (among hospitalised), length na
   const std::vector<double> rrep(parscpp["rrep"]); //reporting rate, length na
 
+  //demographic ageing (continuous): eta = ageing-out rate per band (eta[na-1] = death
+  //rate from the top band); births = daily births into each IMD's youngest S.
+  //All-zero eta & births disable ageing (default).
+  const std::vector<double> eta(   parscpp["eta"]);     //length na
+  const std::vector<double> births(parscpp["births"]);  //length ns
+
   //contact matrix
   const std::vector<double> cm( parscpp["cm"]);
   const int   cmdim1( parscpp["cmdim1"]);
@@ -74,6 +80,7 @@ List model(List parscpp) {
   NumericMatrix Hw_ag(nd, ng);
   //daily age-stratified incidence (nd x na)
   NumericMatrix Iw_a(nd, na), Uw_a(nd, na), Hw_a(nd, na);
+  NumericMatrix Nw_a(nd, na);  //living population (S+E+I+U+H+R) by age band, per day
 
   NumericVector time(nt);
   int ig;
@@ -116,6 +123,9 @@ List model(List parscpp) {
     //seasonal forcing (Gaussian pulse, David rsvie): beta(t) = beta0 * season
     double t1   = std::fmod(time[it], 365.0);
     double beta = beta0*(1.0 + b1*(1.0 + std::exp(-(t1/365.0-phi)*(t1/365.0-phi)/(2.0*psi*psi))));
+
+    //snapshot of current state for ageing (begin-of-step values -> exactly conserves people)
+    std::vector<double> Sp=S_0, Ep=E_0, Ip=I_0, Up=U_0, Hp=H_0, Rp=R_0;
 
     for (int is = 0; is < ns; is++) {
     for (int ia = 0; ia < na; ia++) {
@@ -162,6 +172,17 @@ List model(List parscpp) {
       dR  = dt*(  (1-ha)*rIo + rUo + (1-mHa)*rHo - rW_nat*Rat );
       dD  = dt*(  mHa*rHo               );
       dCc = dt*(  yas*rEo*rrepa         );
+
+      // --- demographic ageing: eta[ia] out (to ia+1; death from the top band), eta[ia-1] in ---
+      dS -= dt*eta[ia]*Sat; dE -= dt*eta[ia]*Eat; dI -= dt*eta[ia]*Iat;
+      dU -= dt*eta[ia]*Uat; dH -= dt*eta[ia]*Hat; dR -= dt*eta[ia]*Rat;
+      if (ia > 0) {                 // ageing in from band below (same IMD); begin-of-step values
+        double r = eta[ia-1];
+        dS += dt*r*Sp[ig-1]; dE += dt*r*Ep[ig-1]; dI += dt*r*Ip[ig-1];
+        dU += dt*r*Up[ig-1]; dH += dt*r*Hp[ig-1]; dR += dt*r*Rp[ig-1];
+      } else {                      // youngest band: births enter susceptible
+        dS += dt*births[is];
+      }
 
       S_0[ig]  = Sat  + dS;
       E_0[ig]  = Eat  + dE;
@@ -216,6 +237,9 @@ List model(List parscpp) {
         Iw_a(day-1, ia) = Ipw_a[ia]; Ipw_a[ia] = 0;
         Uw_a(day-1, ia) = Upw_a[ia]; Upw_a[ia] = 0;
         Hw_a(day-1, ia) = Hpw_a[ia]; Hpw_a[ia] = 0;
+        double n = 0;                                        // living pop by age band
+        for (int is = 0; is < ns; is++) { int g = is*na+ia; n += S_0[g]+E_0[g]+I_0[g]+U_0[g]+H_0[g]+R_0[g]; }
+        Nw_a(day-1, ia) = n;
       }
       for (int ig2 = 0; ig2 < ng; ig2++) {
         Hw_ag(day-1, ig2) = Hpw_ag[ig2]; Hpw_ag[ig2] = 0;
@@ -242,6 +266,7 @@ List model(List parscpp) {
     Named("Iw_a") = Iw_a,
     Named("Uw_a") = Uw_a,
     Named("Hw_a") = Hw_a,
+    Named("Nw_a") = Nw_a,     //living population by age band, per day
     Named("Hw_ag") = Hw_ag);  //daily H by (age x IMD)
 
   return Rcpp::List::create(Rcpp::Named("byw") = byw, Rcpp::Named("byaw") = byaw);

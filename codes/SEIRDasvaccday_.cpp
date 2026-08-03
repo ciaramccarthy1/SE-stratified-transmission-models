@@ -67,6 +67,12 @@ List model(List parscpp) {
   const std::vector<double> mH( parscpp["mH"]);
   const std::vector<double> rrep(parscpp["rrep"]);
 
+  //demographic ageing (continuous): eta = ageing-out rate per band (eta[na-1] = death
+  //rate from the top band); births = daily births into each IMD's youngest unvacc S.
+  //All-zero eta & births disable ageing (default).
+  const std::vector<double> eta(   parscpp["eta"]);     //length na
+  const std::vector<double> births(parscpp["births"]);  //length ns
+
   const std::vector<double> cm( parscpp["cm"]);
   const int   cmdim1( parscpp["cmdim1"]);
 
@@ -101,6 +107,7 @@ List model(List parscpp) {
   //stratified matrices (totals = unvacc + vacc)
   NumericMatrix Ew_s(nd, ns), Iw_s(nd, ns), Uw_s(nd, ns), Hw_s(nd, ns), Rw_s(nd, ns);
   NumericMatrix Iw_a(nd, na), Uw_a(nd, na), Hw_a(nd, na);
+  NumericMatrix Nw_a(nd, na);  //living population by age band, per day (unvacc + vacc)
   //(age x IMD)-stratified hospitalisation incidence (rows=day, cols=ig=is*na+ia)
   NumericMatrix Hw_ag(nd, ng), Hwv_ag(nd, ng);
   //V-specific stratification (stock)
@@ -168,6 +175,10 @@ List model(List parscpp) {
     //seasonal forcing (Gaussian pulse, David rsvie): beta(t) = beta0 * season
     double t1   = std::fmod(time[it], 365.0);
     double beta = beta0*(1.0 + b1*(1.0 + std::exp(-(t1/365.0-phi)*(t1/365.0-phi)/(2.0*psi*psi))));
+
+    //snapshot for ageing (begin-of-step values -> exactly conserves people)
+    std::vector<double> Sp=S_0, Ep=E_0, Ip=I_0, Up=U_0, Hp=H_0, Rp=R_0;
+    std::vector<double> Vp=V_0, Evp=Ev_0, Ivp=Iv_0, Uvp=Uv_0, Hvp=Hv_0, Rvp=Rv_0;
 
     for (int is = 0; is < ns; is++) {
     for (int ia = 0; ia < na; ia++) {
@@ -253,6 +264,21 @@ List model(List parscpp) {
       dDv  = dt*(  mHa*(1.0 - ve_m)*rHvo );
       dCcv = dt*(  yas*(1.0 - ve_y)*rEvo*rrepa );
       dVc  = dt*(  rVas*Sat );  //cumulative doses
+
+      // --- demographic ageing: eta[ia] out (to ia+1; death from the top band), eta[ia-1] in ---
+      dS -= dt*eta[ia]*Sat;  dE -= dt*eta[ia]*Eat;  dI -= dt*eta[ia]*Iat;
+      dU -= dt*eta[ia]*Uat;  dH -= dt*eta[ia]*Hat;  dR -= dt*eta[ia]*Rat;
+      dV -= dt*eta[ia]*Vat;  dEv-= dt*eta[ia]*Evat; dIv-= dt*eta[ia]*Ivat;
+      dUv-= dt*eta[ia]*Uvat; dHv-= dt*eta[ia]*Hvat; dRv-= dt*eta[ia]*Rvat;
+      if (ia > 0) {                 // ageing in from band below (same IMD); begin-of-step values
+        double r = eta[ia-1];
+        dS += dt*r*Sp[ig-1];  dE += dt*r*Ep[ig-1];  dI += dt*r*Ip[ig-1];
+        dU += dt*r*Up[ig-1];  dH += dt*r*Hp[ig-1];  dR += dt*r*Rp[ig-1];
+        dV += dt*r*Vp[ig-1];  dEv+= dt*r*Evp[ig-1]; dIv+= dt*r*Ivp[ig-1];
+        dUv+= dt*r*Uvp[ig-1]; dHv+= dt*r*Hvp[ig-1]; dRv+= dt*r*Rvp[ig-1];
+      } else {                      // youngest band: births enter unvaccinated susceptible
+        dS += dt*births[is];
+      }
 
       //--- update ---
       S_0[ig]  = Sat  + dS;
@@ -347,6 +373,11 @@ List model(List parscpp) {
         Iw_a(day-1, ia) = Ipw_a[ia]; Ipw_a[ia] = 0;
         Uw_a(day-1, ia) = Upw_a[ia]; Upw_a[ia] = 0;
         Hw_a(day-1, ia) = Hpw_a[ia]; Hpw_a[ia] = 0;
+        double n = 0;                                        // living pop (unvacc + vacc) by band
+        for (int is = 0; is < ns; is++) { int g = is*na+ia;
+          n += S_0[g]+E_0[g]+I_0[g]+U_0[g]+H_0[g]+R_0[g]
+             + V_0[g]+Ev_0[g]+Iv_0[g]+Uv_0[g]+Hv_0[g]+Rv_0[g]; }
+        Nw_a(day-1, ia) = n;
       }
       for (int ig2 = 0; ig2 < ng; ig2++) {
         Hw_ag(day-1, ig2)  = Hpw_ag[ig2];  Hpw_ag[ig2]  = 0;
@@ -384,6 +415,7 @@ List model(List parscpp) {
     Named("Iw_a")  = Iw_a,
     Named("Uw_a")  = Uw_a,
     Named("Hw_a")  = Hw_a,
+    Named("Nw_a")  = Nw_a,     //living population by age band, per day
     Named("Hw_ag") = Hw_ag,    //daily H by (age x IMD), unvacc chain
     Named("Hwv_ag")= Hwv_ag,   //daily H by (age x IMD), vacc breakthrough chain
     Named("Vlev_a")= Vlev_a);

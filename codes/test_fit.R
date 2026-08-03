@@ -25,8 +25,8 @@ no_vac_weekly <- read.csv(here("data", "no_vacc_weekly_by_age_outcome.csv"))
 target <- no_vac_weekly |>
   filter(outcome == "symptomatic") |>
   group_by(week_no) |>
-  summarise(cases_total = sum(cases), .groups = "drop") |>
-  mutate(week_no = week_no - 104)
+  summarise(cases_total = sum(cases), .groups = "drop")  #|>
+ # mutate(week_no = week_no - 104)
 
 cat(sprintf("Target (David, symptomatic): peak %.0f at week %d, season total %.0f\n",
             max(target$cases_total),
@@ -50,9 +50,9 @@ pset$COMPILE        <- 1
 davidDemog <- isTRUE(pset$DavidDemog)
 
 ## --- Run the model over a full 52-week season for each candidate beta -------
-betas <- c(0.101, 0.1015, 0.102)
+betas <- c(0.098)
 
-weeks_total <- 52
+weeks_total <- 520
 Tmax        <- weeks_total * 7      # 364 days
 dt_fit      <- 0.1                  # must match parsR_.r dt
 

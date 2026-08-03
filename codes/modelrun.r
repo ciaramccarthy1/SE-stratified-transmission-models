@@ -97,6 +97,24 @@ for (ia in 1:na) { for (is in 1:nimd) {
     Ns[is] = Ns[is] + 1/oNg[(is-1)*na + ia] }}
 Npop = sum(1/oNg);
 
+## Demographic ageing rates (continuous; constant per-band rates). OFF unless
+## pset$Ageing is TRUE (then eta/births are zero and the ageing terms in the cpp vanish).
+##   eta[a] = 1/(365*width_a) for a<na  -> flow from band a to a+1
+##   eta[na]                            -> death rate from the top band, set so total deaths
+##                                         = total births (keeps David's population stationary)
+##   births[s] = daily births into IMD s's youngest band (= its 0-4 outflow)
+if (isTRUE(pset$Ageing)) {
+  ag_lo <- c(0,5,15,25,35,45,55,65,75); ag_hi <- c(5,15,25,35,45,55,65,75,90)  # 9-band edges
+  stopifnot(na == length(ag_lo))
+  eta      <- 1/(365*(ag_hi-ag_lo))                    # ageing-out rate per band
+  flow     <- eta[1]*Na[1]                             # constant demographic flow = daily births
+  eta[na]  <- flow / Na[na]                            # top-band death rate balances births
+  births   <- sapply(1:nimd, function(s) eta[1] * (1/oNg[(s-1)*na + 1]))  # per-IMD births into 0-4
+} else {
+  eta    <- rep(0, na)
+  births <- rep(0, nimd)
+}
+
 
 ## Season-start initial conditions
 if (pars$Disease == "RSV-illness") {
@@ -153,7 +171,8 @@ parscpp45 = within(parscpp45 <- pars, {
                  Sg0=Sg0; Eg0=Eg0; Ig0=Ig0; Ug0=Ug0;
                  Rg0=Rg0; Dg0=Dg0; oNg=oNg;
                  # recovery rates age-varying (length na); rep_len tolerates scalars
-                 rIR=rep_len(as.numeric(rIR), na); rUR=rep_len(as.numeric(rUR), na) })
+                 rIR=rep_len(as.numeric(rIR), na); rUR=rep_len(as.numeric(rUR), na);
+                 eta=eta; births=births })   # demographic ageing (zeros unless pset$Ageing)
 #  for output
 parsum = parscpp45
 #  remove what's not needed for Rcpp:

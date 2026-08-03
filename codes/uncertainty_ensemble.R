@@ -23,6 +23,11 @@ ons    <- read.csv("data/demographics_9age.csv")               # ONS IMD shares 
 ages9  <- c("0 to 4","5 to 14","15 to 24","25 to 34","35 to 44","45 to 54","55 to 64","65 to 74","75+")
 na<-9; nimd<-5; ng<-na*nimd
 
+## comparison horizon: YRS years -> W weeks. YRS=1 reproduces the original single-season
+## plots; YRS=10 runs the full post-burn-in decade (David CSV is full_output, weeks 1..521).
+YRS<-10; W<-YRS*52
+suf<-if(YRS==1) "" else sprintf("_%dyr",YRS)                       # output-filename suffix
+
 ## band geometry (25 -> 9) --------------------------------------------------
 d_lo<-c((0:11)/12,1,2,3,4,5,10,15,25,35,45,55,65,75); d_hi<-c((1:12)/12,2,3,4,5,10,15,25,35,45,55,65,75,90)
 o_lo<-c(0,5,15,25,35,45,55,65,75); o_hi<-c(5,15,25,35,45,55,65,75,90)
@@ -64,7 +69,7 @@ derive <- function(d){
   list(beta_override=pp$qp, f=pp$alpha_i, b1=pp$b1, phi=pp$phi, psi=pp$psi,
        rW_nat=1/pp$om, rEI=1/pp$si, u=u9, y45=rep(y9,nimd), rIR=rIR9, rUR=rUR9,
        cm_override=Cout, ic_states=ic,
-       times=seq(0,364), nt=3641, nd=365)
+       times=seq(0,YRS*365-1), nt=(YRS*365-1)/0.1+1, nd=YRS*365)
 }
 
 ## --- draw-1 sanity check (should be near parsR medians) ---------------------
@@ -81,9 +86,10 @@ source("codes/setup.r")
 pset$Disease<-"RSV-illness";pset$Vaccination<-0;pset$DailyIncidence<-1;pset$Incidence<-"Daily"
 pset$Namevacc<-"";pset$TODAY<-"";pset$FIGURES<-0;pset$DIAGNOSTIC<-0;pset$SUMMARY<-0;pset$COMPILE<-1
 pset$DavidContacts<-TRUE; pset$DavidDemog<-TRUE                    # cm/ic overridden per draw; demog = David pop
+pset$Ageing<-TRUE                                                  # match David: continuous ageing + births/deaths (RunInterventions.h eta), essential over multi-year horizons
 
-wk_of<-function(v){ w<-tapply(v, ceiling(seq_along(v)/7), sum); as.numeric(w[as.integer(names(w))<=52]) }
-tot_mat<-matrix(NA,52,ND); age_arr<-array(NA,dim=c(52,na,ND))
+wk_of<-function(v){ w<-tapply(v, ceiling(seq_along(v)/7), sum); as.numeric(w[as.integer(names(w))<=W]) }
+tot_mat<-matrix(NA,W,ND); age_arr<-array(NA,dim=c(W,na,ND))
 for(k in seq_len(ND)){
   scenario_overrides <- derive(draws[k])
   ok<-tryCatch({invisible(capture.output(source("codes/modelrun.r"))); TRUE}, error=function(e){cat("draw",draws[k],"failed:",conditionMessage(e),"\n");FALSE})
@@ -96,41 +102,48 @@ rm(scenario_overrides)
 
 ## --- David: all sample runs -> ribbons (fallback to mean CSV as 1 run) -------
 W9<-outer(1:25,1:9,Vectorize(function(b,j) ovl(b,j)/(d_hi[b]-d_lo[b])))
-qs<-function(m) apply(matrix(m,nrow=52),1,quantile,probs=c(.025,.5,.975),na.rm=TRUE)
+qs<-function(m) apply(matrix(m,nrow=W),1,quantile,probs=c(.025,.5,.975),na.rm=TRUE)
 lab<-c("0-4","5-14","15-24","25-34","35-44","45-54","55-64","65-74","75+")
-mk<-function(q,src,band=NA) data.frame(week=1:52,lo=q[1,],med=q[2,],hi=q[3,],source=src,band=band)
+mk<-function(q,src,band=NA) data.frame(week=1:W,lo=q[1,],med=q[2,],hi=q[3,],source=src,band=band)
 
 dav_file<-"data/david_outcomes_by_sample.csv"
 if(file.exists(dav_file)){
   dvs<-read.csv(dav_file); if("outcome"%in%names(dvs)) dvs<-dvs[dvs$outcome=="symptomatic",]
-  dvs$week<-dvs$week_no-104; dvs<-dvs[dvs$week>=1 & dvs$week<=52,]
-  ss<-sort(unique(dvs$s)); DT<-matrix(0,52,length(ss)); DA<-array(0,dim=c(52,9,length(ss)))
-  for(i in seq_along(ss)){ d<-dvs[dvs$s==ss[i],]; M<-matrix(0,52,25); M[cbind(d$week,d$age_group)]<-d$cases
+  dvs$week<-dvs$week_no                              # full_output=TRUE -> weeks 1..521, no offset
+  dvs<-dvs[dvs$week>=1 & dvs$week<=W,]
+  ss<-sort(unique(dvs$s)); DT<-matrix(0,W,length(ss)); DA<-array(0,dim=c(W,9,length(ss)))
+  for(i in seq_along(ss)){ d<-dvs[dvs$s==ss[i],]; M<-matrix(0,W,25); M[cbind(d$week,d$age_group)]<-d$cases
     A<-M%*%W9; DA[,,i]<-A; DT[,i]<-rowSums(A) }
   cat(sprintf("David: %d sample runs loaded\n",length(ss)))
 } else {
   dd<-read.csv("data/no_vacc_weekly_by_age_outcome.csv")|>filter(outcome=="symptomatic")|>
-    select(age_group,week_no,cases)|>pivot_wider(names_from=age_group,values_from=cases)|>arrange(week_no)|>mutate(week_no=week_no-104)
-  d0<-as.matrix(dd[,as.character(1:25)])%*%W9; DT<-matrix(rowSums(d0),52,1); DA<-array(d0,dim=c(52,9,1))
+    select(age_group,week_no,cases)|>pivot_wider(names_from=age_group,values_from=cases)|>arrange(week_no)|>filter(week_no>=1,week_no<=W)
+  d0<-as.matrix(dd[,as.character(1:25)])%*%W9; DT<-matrix(rowSums(d0),W,1); DA<-array(d0,dim=c(W,9,1))
   cat("David: per-sample file not found; using mean CSV as a single run (points-equivalent)\n")
 }
 
 ## --- our model = 95% CrI band; David = every rsvie run as a line ------------
-linesdf<-function(M,band=NA){ M<-matrix(M,nrow=52); df<-as.data.frame(M)
-  names(df)<-paste0("r",seq_len(ncol(df))); df$week<-1:52
+linesdf<-function(M,band=NA){ M<-matrix(M,nrow=W); df<-as.data.frame(M)
+  names(df)<-paste0("r",seq_len(ncol(df))); df$week<-1:W
   pivot_longer(df,-week,names_to="rep",values_to="cases")|>mutate(band=band) }
-ribdf <-function(M,band=NA){ q<-qs(M); data.frame(week=1:52,lo=q[1,],med=q[2,],hi=q[3,],band=band) }
+ribdf <-function(M,band=NA){ q<-qs(M); data.frame(week=1:W,lo=q[1,],med=q[2,],hi=q[3,],band=band) }
+
+## x-axis: plain weeks for a single season, year ticks for multi-year runs
+xsc <- if(YRS==1) scale_x_continuous() else scale_x_continuous(breaks=seq(0,W,52),labels=0:YRS)
+xlb <- if(YRS==1) "Week" else "Year"
 
 Td<-linesdf(DT); Tr<-ribdf(tot_mat)
 pT<-ggplot()+
   geom_line(data=Td,aes(week,cases,group=rep),colour="#5e81ac",alpha=.30,linewidth=.32)+
   geom_ribbon(data=Tr,aes(week,ymin=lo,ymax=hi),fill="grey55",alpha=.45)+
-  geom_line(data=Tr,aes(week,med),colour="grey10",linewidth=.9)+
-  labs(x="Week",y="Weekly total symptomatic",
-    title="Total symptomatic: our model 95% CrI (grey band) vs David's rsvie runs (blue lines)",
+  geom_line(data=Tr,aes(week,med),colour="grey10",linewidth=.7)+
+  xsc+
+  labs(x=xlb,y="Weekly total symptomatic",
+    title=sprintf("Total symptomatic (%d-year): our model 95%% CrI (grey band) vs David's rsvie runs (blue lines)",YRS),
     subtitle=sprintf("%d model posterior draws | %d David sample runs",ncol(tot_mat),ncol(DT)))+
   theme_minimal(base_size=11)
-ggsave("output/uncertainty_total.png",pT,width=8,height=5,dpi=140)
+ggsave(sprintf("output/uncertainty_total%s.png",suf),pT,
+       width=if(YRS==1)8 else 12,height=if(YRS==1)5 else 4.6,dpi=140)
 
 ageL<-do.call(rbind,lapply(1:na,function(a) linesdf(DA[,a,],lab[a])))
 ageR<-do.call(rbind,lapply(1:na,function(a) ribdf(age_arr[,a,],lab[a])))
@@ -138,22 +151,24 @@ ageL$band<-factor(ageL$band,levels=lab); ageR$band<-factor(ageR$band,levels=lab)
 pA<-ggplot()+
   geom_line(data=ageL,aes(week,cases,group=interaction(band,rep)),colour="#5e81ac",alpha=.30,linewidth=.26)+
   geom_ribbon(data=ageR,aes(week,ymin=lo,ymax=hi),fill="grey55",alpha=.45)+
-  geom_line(data=ageR,aes(week,med),colour="grey10",linewidth=.6)+
-  facet_wrap(~band,scales="free_y",ncol=3)+
-  labs(x="Week",y="Weekly symptomatic",
-    title="By age: our model 95% CrI (grey band) vs David's rsvie runs (blue lines), David demographics")+
+  geom_line(data=ageR,aes(week,med),colour="grey10",linewidth=.5)+
+  facet_wrap(~band,scales="free_y",ncol=2)+
+  xsc+
+  labs(x=xlb,y="Weekly symptomatic",
+    title=sprintf("By age (%d-year): our model 95%% CrI (grey band) vs David's rsvie runs (blue lines), David demographics",YRS))+
   theme_minimal(base_size=10)
-ggsave("output/uncertainty_byage.png",pA,width=10,height=8.5,dpi=140)
+ggsave(sprintf("output/uncertainty_byage%s.png",suf),pA,
+       width=if(YRS==1)10 else 10,height=if(YRS==1)8.5 else 13,dpi=140)
 
-cat("\n=== season-total by band: ours vs David, median [2.5%, 97.5%] (thousands) ===\n")
+cat(sprintf("\n=== %d-year total by band: ours vs David, median [2.5%%, 97.5%%] (thousands) ===\n",YRS))
 for(a in 1:na){
-  o<-colSums(matrix(age_arr[,a,],nrow=52)); d<-colSums(matrix(DA[,a,],nrow=52))
+  o<-colSums(matrix(age_arr[,a,],nrow=W)); d<-colSums(matrix(DA[,a,],nrow=W))
   ovr<-if(quantile(o,.975)<quantile(d,.025)) "David ABOVE (disjoint)" else if(quantile(o,.025)>quantile(d,.975)) "ours ABOVE (disjoint)" else "overlap"
   cat(sprintf("%-6s ours %5.0f [%5.0f,%5.0f] | David %5.0f [%5.0f,%5.0f]  -> %s\n", lab[a],
     median(o)/1e3, quantile(o,.025)/1e3, quantile(o,.975)/1e3,
     median(d)/1e3, quantile(d,.025)/1e3, quantile(d,.975)/1e3, ovr))
 }
-cat(sprintf("\nSeason-total symptomatic: ours %.2fM [%.2f, %.2f] | David %.2fM [%.2f, %.2f]\n",
+cat(sprintf("\n%d-year total symptomatic: ours %.2fM [%.2f, %.2f] | David %.2fM [%.2f, %.2f]\n",YRS,
   median(colSums(tot_mat),na.rm=TRUE)/1e6, quantile(colSums(tot_mat),.025,na.rm=TRUE)/1e6, quantile(colSums(tot_mat),.975,na.rm=TRUE)/1e6,
   median(colSums(DT))/1e6, quantile(colSums(DT),.025)/1e6, quantile(colSums(DT),.975)/1e6))
-cat("Wrote output/uncertainty_total.png and output/uncertainty_byage.png\n")
+cat(sprintf("Wrote output/uncertainty_total%s.png and output/uncertainty_byage%s.png\n",suf,suf))

@@ -23,6 +23,10 @@ pset <- within(pset, {
 	# real ONS demographics. TRUE (with DavidContacts=TRUE) closely reproduces his
 	# age-stratified output; FALSE (default) uses real ONS demographics_9age.csv.
 	DavidDemog     <- FALSE
+	# Continuous demographic ageing (constant per-band rates: births into the
+	# youngest band, ageing up, deaths out of the top). FALSE = frozen population (fine for
+	# single-season reproduction). Set TRUE for multi-year runs where cohorts must age.
+	Ageing         <- TRUE
 	platform       <- "repo" # "pc"
 	
 	if(platform=="repo") TODAY=""

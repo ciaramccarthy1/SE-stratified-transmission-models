@@ -23,7 +23,7 @@ pset$FIGURES<-0; pset$DIAGNOSTIC<-0; pset$SUMMARY<-0; pset$COMPILE<-1
 davidDemog <- isTRUE(pset$DavidDemog)
 
 # baseline transmission to plot (eyeball fit)
-beta0 <- 0.102
+beta0 <- 0.098
 
 ## our 9 bands (aligned with David's)
 o_lo <- c(0,5,15,25,35,45,55,65,75); o_hi <- c(5,15,25,35,45,55,65,75,90)
@@ -50,8 +50,8 @@ W <- outer(1:25, seq_along(o_lo), Vectorize(function(b,j)
 dd <- read.csv("data/no_vacc_weekly_by_age_outcome.csv") |>
   filter(outcome=="symptomatic") |>
   select(age_group, week_no, cases) |>
-  pivot_wider(names_from=age_group, values_from=cases) |> arrange(week_no) |>
-  mutate(week_no = week_no - 104)
+  pivot_wider(names_from=age_group, values_from=cases) |> arrange(week_no) # |>
+ # mutate(week_no = week_no - 104)
 Mmat <- as.matrix(dd[, as.character(1:25)])              # 52 x 25
 dav  <- Mmat %*% W                                       # 52 x na
 dav_df <- as.data.frame(dav) |> setNames(as.character(o_nm)) |>

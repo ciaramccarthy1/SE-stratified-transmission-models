@@ -22,19 +22,15 @@ pars <- within(pars, {
 
     age = c(mean(0:4),mean(5:14),mean(15:24),mean(25:34),mean(35:44),mean(45:54),mean(55:64),mean(65:74),mean(75:90))
 
-    #Mortality fraction if clinically infected - derived and age-adjusted from IFR/y in Hodgson 2020
-    # TODO(9-age David-aligned): 15-24 keeps old 15-19 value; 25-34+ = old 20+ adult value. PLACEHOLDER (not used in symptomatic fit).
-    m <- c(0.002609698, 0.001407748, 0.165154365, 0.405802227, 0.405802227, 0.405802227,
-    0.405802227, 0.405802227, 0.405802227)
-
-    #Hospitalisation pathway (H compartment): I2 -> H at rate h*rI2R; H -> D at rate mH*rH; H -> R at rate (1-mH)*rH
-    # TODO(H scaffold): h (hospitalisation fraction given clinical) and mH (mortality given hospitalised) - placeholder derivation:
-    #   h  = pmin(10*m, 0.8)      (assume hospitalisation roughly 10x mortality, capped)
-    #   mH = m / h                (so overall mortality given clinical = h*mH = m, preserving the legacy m semantics)
-    # Replace h and mH with literature values when available (e.g. Hodgson 2020 hospitalisation rates).
-    h  <- pmin(10*m, 0.8)
-    mH <- m / h
-    rH <- 1/6                     #1/hospital stay length (days^-1); TODO use RSV-specific value
+    #Hospitalisation & mortality: computed as a POST-PROCESSING step (infections x
+    #age-specific outcome risk), exactly as in David's rsvie - NOT within the dynamic model.
+    #So the transmission dynamics carry no H/D removal: h = m = mH = 0. This leaves the
+    #symptomatic fit unchanged (I still recovers at rIR) and keeps the population conserved
+    #under ageing (no disease deaths). Apply outcome risks to the infection output downstream.
+    m  <- rep(0, 9)
+    h  <- rep(0, 9)
+    mH <- rep(0, 9)
+    rH <- 1/6                     #1/hospital stay length (days^-1); unused while h = 0
     
     #Natural waning of post-infection immunity (R -> S); 0 = lifelong
     # From David's rsvie fit: immunity duration ~358 days (om), so rate = 1/358
