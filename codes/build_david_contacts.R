@@ -23,6 +23,8 @@ qc  <- 0.999182                       # median posterior conversational weight
 cp  <- as.matrix(read.csv("data/david_cnt_p25.csv"))
 cc  <- as.matrix(read.csv("data/david_cnt_c25.csv"))
 pop <- read.csv("data/david_pop25.csv")$pop
+stopifnot(dim(cp) == c(25, 25), dim(cc) == c(25, 25), length(pop) == 25,
+          is.numeric(cp), is.numeric(cc), is.numeric(pop))
 C25 <- cp + qc*cc; dimnames(C25) <- NULL   # David's raw transmission matrix (no symmetrisation)
 
 ## --- Age-band edges (years) -------------------------------------------------
