@@ -216,7 +216,10 @@ List model(List parscpp) {
       Hvat  =  Hv_0[ig];
       Rvat  =  Rv_0[ig]; Dvat = Dv_0[ig];
 
-      //FOI: sum across unvacc + vacc infectious (H/Hv excluded - isolated)
+      //FOI: sum across unvacc + vacc infectious (H/Hv excluded - isolated).
+      //Reads the begin-of-step snapshot (Ip/Up/Ivp/Uvp) so the FOI is a Jacobi
+      //step, independent of is/ia iteration order (I_0/U_0/... are updated in
+      //place below).
       FOI = 0;
       for (int is2 = 0; is2 < ns; is2++) {
       for (int ia2 = 0; ia2 < na; ia2++) {
@@ -224,8 +227,8 @@ List model(List parscpp) {
         icm = ig2*cmdim1 + ig;
         cmi = cm[icm];
         FOI += beta*ua*cmi*(
-          I_0[ig2]  + f*U_0[ig2] +
-          Iv_0[ig2] + f*Uv_0[ig2]
+          Ip[ig2]  + f*Up[ig2] +
+          Ivp[ig2] + f*Uvp[ig2]
         ) * oNg[ig2];
       }}
 

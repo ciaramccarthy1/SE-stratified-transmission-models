@@ -158,8 +158,9 @@ List model(List parscpp) {
         ig2 = is2*na + ia2;
         icm = ig2*cmdim1 + ig;
         cmi = cm[icm];
-        //H is not infectious (isolated)
-        FOI += beta*ua*cmi*( I_0[ig2] + f*U_0[ig2] )*oNg[ig2];
+        //H is not infectious (isolated). Read begin-of-step snapshot Ip/Up so
+        //FOI is a Jacobi step, independent of is/ia order (I_0/U_0 updated in place).
+        FOI += beta*ua*cmi*( Ip[ig2] + f*Up[ig2] )*oNg[ig2];
       }}
 
       FOIS = FOI*Sat;

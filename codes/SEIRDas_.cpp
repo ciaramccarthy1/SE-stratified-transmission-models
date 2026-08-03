@@ -109,6 +109,11 @@ List model(List parscpp) {
     double t1   = std::fmod(time[it], 365.0);
     double beta = beta0*(1.0 + b1*(1.0 + std::exp(-(t1/365.0-phi)*(t1/365.0-phi)/(2.0*psi*psi))));
 
+    // Snapshot infectious compartments at time t so every group's FOI is computed
+    // from the SAME state (Jacobi step). I_0/U_0 are updated in place below, so
+    // without this the FOI would depend on is/ia iteration order.
+    std::vector<double> I_s = I_0, U_s = U_0;
+
     for (int is = 0; is < ns; is++) {
     for (int ia = 0; ia < na; ia++) {
       ig    = is*na + ia;
@@ -132,7 +137,7 @@ List model(List parscpp) {
         ig2 = is2*na + ia2;
         icm = ig2*cmdim1 + ig;
         cmi = cm[icm];
-        FOI += beta*ua*cmi*( I_0[ig2] + f*U_0[ig2] )*oNg[ig2];
+        FOI += beta*ua*cmi*( I_s[ig2] + f*U_s[ig2] )*oNg[ig2];
       }}
 
       FOIS = FOI*Sat;
