@@ -32,9 +32,8 @@ pars <- within(pars, {
   mH <- rep(0, 9)
   rH <- 1/6                     #1/hospital stay length (days^-1); unused while h = 0
   
-  #Natural waning of post-infection immunity (R -> S); 0 = lifelong
-  # From David's rsvie fit: immunity duration ~358 days (om), so rate = 1/358
-  rW_nat <- 1/358.058
+  # Natural waning of post-infection immunity (R -> S) is set once with the
+  # other vaccine/waning parameters below (see rW_nat near rW).
   
   #temporal
   dt     <- 0.1             #0.01 #time step (days)
