@@ -32,13 +32,13 @@ pset$COMPILE        <- 1
 
 
 ## --- Build the comparator scenarios ----------------------------------------
-na   <- 10
+na   <- 9
 nimd <- 5
 
 build_vcov <- function(uptake_per_quintile, na, nimd) {
   stopifnot(length(uptake_per_quintile) == nimd)
   vc <- matrix(0, na, nimd)
-  vc[na, ] <- uptake_per_quintile        # band 10 (75+) only
+  vc[na, ] <- uptake_per_quintile        # band 9 = last band (75+) only
   as.vector(vc)                          # IMD-major
 }
 
@@ -48,7 +48,7 @@ uptake_status_quo <- uptake_status_quo$uptake_pct[
   order(uptake_status_quo$quintile)] / 100
 
 # Population-weighted mean of current uptake = dose-neutral equal-coverage counterfactual
-demog        <- read.csv("data/demographics_10age.csv")
+demog        <- read.csv("data/demographics_9age.csv")
 pop_75_by_q  <- demog$Population[demog$Age == "75+"]
 stopifnot(length(pop_75_by_q) == nimd)
 equal_uptake <- sum(uptake_status_quo * pop_75_by_q) / sum(pop_75_by_q)

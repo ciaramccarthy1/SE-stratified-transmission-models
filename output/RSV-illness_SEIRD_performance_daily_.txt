@@ -1,6 +1,0 @@
-[1] "Iterations = 100"
-# A tibble: 1 × 11
-  expression      min median `itr/sec` mem_alloc `gc/sec` n_itr  n_gc total_time
-  <bch:expr>   <bch:> <bch:>     <dbl> <bch:byt>    <dbl> <int> <dbl>   <bch:tm>
-1 model(parsc… 12.5ms 12.8ms      77.2     112KB        0   100     0      1.29s
-# ℹ 2 more variables: result <list>, memory <list>

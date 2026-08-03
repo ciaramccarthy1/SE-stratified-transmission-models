@@ -4,17 +4,18 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 #include <array>
+#include <cmath>
 
 // [[Rcpp::export]]
 List model(List parscpp) {
 
-  const double beta( parscpp["beta"]);
-  const double rEI(  parscpp["rEI"]);
-  const double rI1I2(parscpp["rI1I2"]);
-  const double rI2R( parscpp["rI2R"]);
-  const double rUR(  parscpp["rUR"]);
-  const double rE    = 2*rEI;
-  const double rU    = 2*rUR;
+  const double beta0( parscpp["beta"]);       //baseline transmission (seasonal multiplier applied per day)
+  const double b1(   parscpp["b1"]);          //seasonal amplitude (Gaussian pulse, David rsvie)
+  const double phi(  parscpp["phi"]);         //seasonal phase (fraction of year at peak)
+  const double psi(  parscpp["psi"]);         //seasonal width (fraction of year)
+  const double rEI(  parscpp["rEI"]);              //latency E -> I/U (single stage, no Erlang)
+  const std::vector<double> rIR( parscpp["rIR"]);  //recovery I -> R/H rate, by age (David exposure-group avg)
+  const std::vector<double> rUR( parscpp["rUR"]);  //recovery U -> R   rate, by age
   const double f(    parscpp["f"]);
   const double rH(   parscpp["rH"]);
 
@@ -46,24 +47,21 @@ List model(List parscpp) {
   const int   cmdim1( parscpp["cmdim1"]);
 
   const std::vector<double> Sg0( parscpp["Sg0"]);
-  const std::vector<double> E1g0(parscpp["E1g0"]);
-  const std::vector<double> E2g0(parscpp["E2g0"]);
-  const std::vector<double> U1g0(parscpp["U1g0"]);
-  const std::vector<double> U2g0(parscpp["U2g0"]);
-  const std::vector<double> I1g0(parscpp["I1g0"]);
-  const std::vector<double> I2g0(parscpp["I2g0"]);
+  const std::vector<double> Eg0( parscpp["Eg0"]);
+  const std::vector<double> Ug0( parscpp["Ug0"]);
+  const std::vector<double> Ig0( parscpp["Ig0"]);
   const std::vector<double> Rg0( parscpp["Rg0"]);
   const std::vector<double> Dg0( parscpp["Dg0"]);
   const std::vector<double> oNg( parscpp["oNg"]);
 
-  std::vector<double> S_0(ng), E1_0(ng), E2_0(ng);
-  std::vector<double> I1_0(ng), I2_0(ng), H_0(ng);
-  std::vector<double> U1_0(ng), U2_0(ng);
+  std::vector<double> S_0(ng), E_0(ng);
+  std::vector<double> I_0(ng), H_0(ng);
+  std::vector<double> U_0(ng);
   std::vector<double> R_0(ng),  D_0(ng);
   std::vector<double> V_0(ng);
-  std::vector<double> Ev1_0(ng), Ev2_0(ng);
-  std::vector<double> Iv1_0(ng), Iv2_0(ng), Hv_0(ng);
-  std::vector<double> Uv1_0(ng), Uv2_0(ng);
+  std::vector<double> Ev_0(ng);
+  std::vector<double> Iv_0(ng), Hv_0(ng);
+  std::vector<double> Uv_0(ng);
   std::vector<double> Rv_0(ng),  Dv_0(ng);
   std::vector<double> Vc_0(ng), Cc_0(ng), Ccv_0(ng);
 
@@ -85,16 +83,16 @@ List model(List parscpp) {
   for (int ia = 0; ia < na; ia++) {
     ig = ia + is*na;
     S_0[ig]  = Sg0[ig];
-    E1_0[ig] = E1g0[ig]; E2_0[ig] = E2g0[ig];
-    I1_0[ig] = I1g0[ig]; I2_0[ig] = I2g0[ig];
-    U1_0[ig] = U1g0[ig]; U2_0[ig] = U2g0[ig];
+    E_0[ig]  = Eg0[ig];
+    I_0[ig]  = Ig0[ig];
+    U_0[ig]  = Ug0[ig];
     H_0[ig]  = 0.0;
     R_0[ig]  = Rg0[ig];
     D_0[ig]  = Dg0[ig];
     V_0[ig] = 0.0;
-    Ev1_0[ig] = 0.0; Ev2_0[ig] = 0.0;
-    Iv1_0[ig] = 0.0; Iv2_0[ig] = 0.0;
-    Uv1_0[ig] = 0.0; Uv2_0[ig] = 0.0;
+    Ev_0[ig] = 0.0;
+    Iv_0[ig] = 0.0;
+    Uv_0[ig] = 0.0;
     Hv_0[ig]  = 0.0;
     Rv_0[ig]  = 0.0; Dv_0[ig] = 0.0;
     Vc_0[ig]  = 0.0; Cc_0[ig] = 0.0; Ccv_0[ig] = 0.0;
@@ -115,20 +113,39 @@ List model(List parscpp) {
 
   double yas, ua, ha, mHa, rrepa, cmi;
   double rVas, ve_i, ve_y, ve_h, ve_m;
-  double Sat, E1at, E2at, U1at, U2at, I1at, I2at, Hat, Rat, Dat;
-  double Vat, Ev1at, Ev2at, Uv1at, Uv2at, Iv1at, Iv2at, Hvat, Rvat, Dvat;
+  double Sat, Eat, Uat, Iat, Hat, Rat, Dat;
+  double Vat, Evat, Uvat, Ivat, Hvat, Rvat, Dvat;
   double FOI, FOIS, FOIvV;
-  double rE1, rE2, rU1, rU2, rI1, rI2, rHo;
-  double rEv1, rEv2, rUv1, rUv2, rIv1, rIv2, rHvo;
+  double rEo, rUo, rIo, rHo;
+  double rEvo, rUvo, rIvo, rHvo;
   double dVin, dEin, dIin, dUin, dHin;
   double dEvin, dIvin, dUvin, dHvin;
-  double dS, dE1, dE2, dI1, dI2, dH, dU1, dU2, dR, dD, dCc;
-  double dV, dEv1, dEv2, dIv1, dIv2, dHv, dUv1, dUv2, dRv, dDv, dCcv, dVc;
+  double dS, dE, dI, dH, dU, dR, dD, dCc;
+  double dV, dEv, dIv, dHv, dUv, dRv, dDv, dCcv, dVc;
   int    icm, ig2;
 
   for (int it = 0; it < (nt-1); it++) {
     week0 = week;
     week  = 1 + (int) time[it]/7;
+
+    //seasonal forcing (Gaussian pulse). Reproduces rsvie EXACTLY (Hodgson,
+    //RunInterventions.h:968). Two properties are INTENTIONAL (not bugs) - keep
+    //them to preserve the David calibration:
+    // (1) inner (1.0+...) gives a multiplier floor of 1+b1 (~3), so beta0 is NOT
+    //     a baseline-R0 beta (see R0_.r warning). Dropping it changes the seasonal
+    //     amplitude and de-calibrates unless beta0/b1 are re-derived.
+    // (2) phase (t1/365-phi) is NOT wrapped, so beta is discontinuous at each
+    //     365-day boundary - but that boundary is the seasonal trough, and rsvie
+    //     does the same (no wrap). Do not "fix" without re-fitting to match David.
+    double t1   = std::fmod(time[it], 365.0);
+    double beta = beta0*(1.0 + b1*(1.0 + std::exp(-(t1/365.0-phi)*(t1/365.0-phi)/(2.0*psi*psi))));
+
+    // Snapshot the infectious compartments at time t so every group's FOI is
+    // computed from the SAME (time-t) state - a Jacobi forward-Euler step. The
+    // per-group loop below writes I_0/U_0/Iv_0/Uv_0 in place, so without this
+    // snapshot the FOI would mix updated (ig2<ig) and un-updated (ig2>=ig)
+    // values, making the result depend on is/ia iteration order.
+    std::vector<double> I_s = I_0, U_s = U_0, Iv_s = Iv_0, Uv_s = Uv_0;
 
     for (int is = 0; is < ns; is++) {
     for (int ia = 0; ia < na; ia++) {
@@ -145,16 +162,16 @@ List model(List parscpp) {
       ve_m  = VE_mort[ig];
 
       Sat  =  S_0[ig];
-      E1at = E1_0[ig]; E2at = E2_0[ig];
-      I1at = I1_0[ig]; I2at = I2_0[ig];
-      U1at = U1_0[ig]; U2at = U2_0[ig];
+      Eat  =  E_0[ig];
+      Iat  =  I_0[ig];
+      Uat  =  U_0[ig];
       Hat  =  H_0[ig];
       Rat  =  R_0[ig]; Dat  =  D_0[ig];
 
       Vat   =  V_0[ig];
-      Ev1at = Ev1_0[ig]; Ev2at = Ev2_0[ig];
-      Iv1at = Iv1_0[ig]; Iv2at = Iv2_0[ig];
-      Uv1at = Uv1_0[ig]; Uv2at = Uv2_0[ig];
+      Evat  =  Ev_0[ig];
+      Ivat  =  Iv_0[ig];
+      Uvat  =  Uv_0[ig];
       Hvat  =  Hv_0[ig];
       Rvat  =  Rv_0[ig]; Dvat = Dv_0[ig];
 
@@ -165,71 +182,65 @@ List model(List parscpp) {
         icm = ig2*cmdim1 + ig;
         cmi = cm[icm];
         FOI += beta*ua*cmi*(
-          I1_0[ig2]  + I2_0[ig2]  + f*U1_0[ig2]  + f*U2_0[ig2] +
-          Iv1_0[ig2] + Iv2_0[ig2] + f*Uv1_0[ig2] + f*Uv2_0[ig2]
+          I_s[ig2]  + f*U_s[ig2] +
+          Iv_s[ig2] + f*Uv_s[ig2]
         ) * oNg[ig2];
       }}
 
       FOIS   = FOI*Sat;
       FOIvV  = FOI*Vat*(1.0 - ve_i);
 
-      rE1  = rE*E1at;     rE2  = rE*E2at;
-      rU1  = rU*U1at;     rU2  = rU*U2at;
-      rI1  = rI1I2*I1at;  rI2  = rI2R*I2at;
+      rEo  = rEI*Eat;
+      rUo  = rUR[ia]*Uat;
+      rIo  = rIR[ia]*Iat;
       rHo  = rH*Hat;
-      rEv1 = rE*Ev1at;    rEv2 = rE*Ev2at;
-      rUv1 = rU*Uv1at;    rUv2 = rU*Uv2at;
-      rIv1 = rI1I2*Iv1at; rIv2 = rI2R*Iv2at;
+      rEvo = rEI*Evat;
+      rUvo = rUR[ia]*Uvat;
+      rIvo = rIR[ia]*Ivat;
       rHvo = rH*Hvat;
 
       dEin  = dt*FOIS;
-      dIin  = dt*yas*rE2;
-      dUin  = dt*(1-yas)*rE2;
-      dHin  = dt*ha*rI2;
+      dIin  = dt*yas*rEo;
+      dUin  = dt*(1-yas)*rEo;
+      dHin  = dt*ha*rIo;
       dVin  = dt*rVas*Sat;
       dEvin = dt*FOIvV;
-      dIvin = dt*yas*(1.0 - ve_y)*rEv2;
-      dUvin = dt*(1.0 - yas*(1.0 - ve_y))*rEv2;
-      dHvin = dt*ha*(1.0 - ve_h)*rIv2;
+      dIvin = dt*yas*(1.0 - ve_y)*rEvo;
+      dUvin = dt*(1.0 - yas*(1.0 - ve_y))*rEvo;
+      dHvin = dt*ha*(1.0 - ve_h)*rIvo;
 
       dS  = dt*( -FOIS - rVas*Sat + rW*Vat + rW_nat*Rat + rW_nat*Rvat );
-      dE1 = dt*(  FOIS - rE1 );
-      dE2 = dt*(  rE1  - rE2 );
-      dI1 = dt*(  yas*rE2 - rI1 );
-      dI2 = dt*(  rI1  - rI2 );
-      dU1 = dt*(  (1-yas)*rE2 - rU1 );
-      dU2 = dt*(  rU1  - rU2 );
-      dH  = dt*(  ha*rI2 - rHo );
-      dR  = dt*(  (1-ha)*rI2 + rU2 + (1.0-mHa)*rHo - rW_nat*Rat );
+      dE  = dt*(  FOIS - rEo );
+      dI  = dt*(  yas*rEo - rIo );
+      dU  = dt*(  (1-yas)*rEo - rUo );
+      dH  = dt*(  ha*rIo - rHo );
+      dR  = dt*(  (1-ha)*rIo + rUo + (1.0-mHa)*rHo - rW_nat*Rat );
       dD  = dt*(  mHa*rHo );
-      dCc = dt*(  yas*rE2*rrepa );
+      dCc = dt*(  yas*rEo*rrepa );
 
       dV   = dt*( rVas*Sat - FOIvV - rW*Vat );
-      dEv1 = dt*(  FOIvV - rEv1 );
-      dEv2 = dt*(  rEv1  - rEv2 );
-      dIv1 = dt*(  yas*(1.0 - ve_y)*rEv2 - rIv1 );
-      dIv2 = dt*(  rIv1  - rIv2 );
-      dUv1 = dt*(  (1.0 - yas*(1.0 - ve_y))*rEv2 - rUv1 );
-      dUv2 = dt*(  rUv1  - rUv2 );
-      dHv  = dt*(  ha*(1.0 - ve_h)*rIv2 - rHvo );
-      dRv  = dt*(  (1.0 - ha*(1.0 - ve_h))*rIv2 + rUv2 + (1.0 - mHa*(1.0 - ve_m))*rHvo - rW_nat*Rvat );
+      dEv  = dt*(  FOIvV - rEvo );
+      dIv  = dt*(  yas*(1.0 - ve_y)*rEvo - rIvo );
+      dUv  = dt*(  (1.0 - yas*(1.0 - ve_y))*rEvo - rUvo );
+      dHv  = dt*(  ha*(1.0 - ve_h)*rIvo - rHvo );
+      dRv  = dt*(  (1.0 - ha*(1.0 - ve_h))*rIvo + rUvo + (1.0 - mHa*(1.0 - ve_m))*rHvo - rW_nat*Rvat );
       dDv  = dt*(  mHa*(1.0 - ve_m)*rHvo );
-      dCcv = dt*(  yas*(1.0 - ve_y)*rEv2*rrepa );
+      dCcv = dt*(  yas*(1.0 - ve_y)*rEvo*rrepa );
       dVc  = dt*(  rVas*Sat );
 
       S_0[ig]  = Sat  + dS;
-      E1_0[ig] = E1at + dE1; E2_0[ig] = E2at + dE2;
-      I1_0[ig] = I1at + dI1; I2_0[ig] = I2at + dI2;
-      U1_0[ig] = U1at + dU1; U2_0[ig] = U2at + dU2;
+      E_0[ig]  = Eat  + dE;
+      I_0[ig]  = Iat  + dI;
+      U_0[ig]  = Uat  + dU;
       H_0[ig]  = Hat  + dH;
       R_0[ig]  = Rat  + dR;
       D_0[ig]  = Dat  + dD;
       Cc_0[ig] = Cc_0[ig] + dCc;
 
       V_0[ig]   = Vat   + dV;
-      Ev1_0[ig] = Ev1at + dEv1; Ev2_0[ig] = Ev2at + dEv2;
-      Iv1_0[ig] = Iv1at + dIv1; Iv2_0[ig] = Iv2at + dIv2;
-      Uv1_0[ig] = Uv1at + dUv1; Uv2_0[ig] = Uv2at + dUv2;
+      Ev_0[ig]  = Evat  + dEv;
+      Iv_0[ig]  = Ivat  + dIv;
+      Uv_0[ig]  = Uvat  + dUv;
       Hv_0[ig]  = Hvat  + dHv;
       Rv_0[ig]  = Rvat  + dRv;
       Dv_0[ig]  = Dvat  + dDv;
