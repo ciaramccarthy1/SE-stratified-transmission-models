@@ -101,7 +101,7 @@ fetch_if_missing(
 ## TO DO: published table includes routine + catch-up cohorts. Routine cohort
 ## uptake is currently lower than the all-cohort figure - need to
 ## update with cohort-specific values when separable.
-## Feeds: vcov in parsRv_.r (currently uniform 100% in band 10 / 75+ only).
+## Feeds: vcov in parsRv_.r (targets band 9 / 75+ only, by IMD quintile).
 rsv_uptake_url  <- paste0("https://www.gov.uk/government/statistics/",
                           "respiratory-syncytial-virus-rsv-older-adults-vaccination-coverage-in-england/",
                           "respiratory-syncytial-virus-rsv-older-adults-vaccination-coverage-in-england-january-2026-report")

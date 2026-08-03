@@ -137,16 +137,17 @@ if (pars$Disease == "RSV-illness") {
   o_hi <- c(5,15,25,35,45,55,65,75,90)
   wmean <- function(x, w) if (sum(w) > 0) sum(x*w)/sum(w) else 0
   fcols <- c("frac_R","frac_E","frac_A","frac_I")
-  ic10 <- sapply(fcols, function(cc) vapply(1:na, function(b) {
+  ic9 <- sapply(fcols, function(cc) vapply(1:na, function(b) {
     ov <- pmax(0, pmin(o_hi[b], d_hi) - pmax(o_lo[b], d_lo))   # overlap years
     wmean(david[[cc]], david$Ntot * ov/(d_hi - d_lo)) }, numeric(1)))
+  stopifnot(all(ic9 >= 0), all(rowSums(ic9) <= 1))
   for (is in 1:nimd) for (ia in 1:na) {
     g   <- (is-1)*na + ia
     pop <- 1/oNg[g]
-    Rg0[g] <- pop * ic10[ia, "frac_R"]
-    Eg0[g] <- pop * ic10[ia, "frac_E"]
-    Ug0[g] <- pop * ic10[ia, "frac_A"]
-    Ig0[g] <- pop * ic10[ia, "frac_I"]
+    Rg0[g] <- pop * ic9[ia, "frac_R"]
+    Eg0[g] <- pop * ic9[ia, "frac_E"]
+    Ug0[g] <- pop * ic9[ia, "frac_A"]
+    Ig0[g] <- pop * ic9[ia, "frac_I"]
     Sg0[g] <- pop - Rg0[g] - Eg0[g] - Ug0[g] - Ig0[g]   # = pop*frac_S, exact conservation
   }
 } else {
