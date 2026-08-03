@@ -98,7 +98,7 @@ for (ia in 1:na) { for (is in 1:nimd) {
 Npop = sum(1/oNg);
 
 ## Demographic ageing rates (continuous; constant per-band rates). OFF unless
-## pset$Ageing is TRUE (then eta/births are zero and the ageing terms in the cpp vanish).
+## pset$Ageing is TRUE. When OFF, eta/births are zero and the ageing terms in the cpp vanish.
 ##   eta[a] = 1/(365*width_a) for a<na  -> flow from band a to a+1
 ##   eta[na]                            -> death rate from the top band, set so total deaths
 ##                                         = total births (keeps David's population stationary)
