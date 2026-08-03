@@ -163,10 +163,11 @@ ggsave(sprintf("output/uncertainty_byage%s.png",suf),pA,
 cat(sprintf("\n=== %d-year total by band: ours vs David, median [2.5%%, 97.5%%] (thousands) ===\n",YRS))
 for(a in 1:na){
   o<-colSums(matrix(age_arr[,a,],nrow=W)); d<-colSums(matrix(DA[,a,],nrow=W))
-  ovr<-if(quantile(o,.975)<quantile(d,.025)) "David ABOVE (disjoint)" else if(quantile(o,.025)>quantile(d,.975)) "ours ABOVE (disjoint)" else "overlap"
+  q <- function(x,p) quantile(x,p,na.rm=TRUE)
+  ovr<-if(q(o,.975)<q(d,.025)) "David ABOVE (disjoint)" else if(q(o,.025)>q(d,.975)) "ours ABOVE (disjoint)" else "overlap"
   cat(sprintf("%-6s ours %5.0f [%5.0f,%5.0f] | David %5.0f [%5.0f,%5.0f]  -> %s\n", lab[a],
-    median(o)/1e3, quantile(o,.025)/1e3, quantile(o,.975)/1e3,
-    median(d)/1e3, quantile(d,.025)/1e3, quantile(d,.975)/1e3, ovr))
+    median(o,na.rm=TRUE)/1e3, q(o,.025)/1e3, q(o,.975)/1e3,
+    median(d,na.rm=TRUE)/1e3, q(d,.025)/1e3, q(d,.975)/1e3, ovr))
 }
 cat(sprintf("\n%d-year total symptomatic: ours %.2fM [%.2f, %.2f] | David %.2fM [%.2f, %.2f]\n",YRS,
   median(colSums(tot_mat),na.rm=TRUE)/1e6, quantile(colSums(tot_mat),.025,na.rm=TRUE)/1e6, quantile(colSums(tot_mat),.975,na.rm=TRUE)/1e6,
