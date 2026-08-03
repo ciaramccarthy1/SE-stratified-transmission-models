@@ -2,6 +2,15 @@
 # COVID-19, Influenza
 #
 # Requires cm45, pars
+#
+# WARNING: the R0 <-> beta mapping below assumes a CONSTANT transmission rate
+# (seasonal multiplier = 1), which was correct for the original constant-beta
+# COVID/Influenza model. It does NOT account for the RSV Gaussian seasonal
+# multiplier season(t) = 1 + b1*(1 + exp(...)), which ranges ~3-5x (never 1).
+# So for RSV the beta it returns is off by that seasonal factor and must not be
+# trusted. It is NOT used for RSV: modelrun.r overrides betanew with
+# pars$beta_override (= David's fitted qp). To calibrate RSV via a target R0,
+# first update this to apply the seasonal multiplier (or drop the inner 1+).
 
 
 ## Demography

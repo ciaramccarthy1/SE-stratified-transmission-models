@@ -128,7 +128,15 @@ List model(List parscpp) {
     week0 = week;
     week  = 1 + (int) time[it]/7;
 
-    //seasonal forcing (Gaussian pulse, David rsvie): beta(t) = beta0 * season
+    //seasonal forcing (Gaussian pulse). Reproduces rsvie EXACTLY (Hodgson,
+    //RunInterventions.h:968). Two properties are INTENTIONAL (not bugs) - keep
+    //them to preserve the David calibration:
+    // (1) inner (1.0+...) gives a multiplier floor of 1+b1 (~3), so beta0 is NOT
+    //     a baseline-R0 beta (see R0_.r warning). Dropping it changes the seasonal
+    //     amplitude and de-calibrates unless beta0/b1 are re-derived.
+    // (2) phase (t1/365-phi) is NOT wrapped, so beta is discontinuous at each
+    //     365-day boundary - but that boundary is the seasonal trough, and rsvie
+    //     does the same (no wrap). Do not "fix" without re-fitting to match David.
     double t1   = std::fmod(time[it], 365.0);
     double beta = beta0*(1.0 + b1*(1.0 + std::exp(-(t1/365.0-phi)*(t1/365.0-phi)/(2.0*psi*psi))));
 
