@@ -16,16 +16,32 @@ pset <- within(pset, {
     SUMMARY      <- 1 #0 #1
     
 	  COMPILE      <- 1
-	# TEMP (testing): use David's rsvie contact matrix by default (Mas45_david.csv).
-	# Set FALSE to revert to the Reconnect matrix (Mas45.csv).
-	DavidContacts  <- TRUE
-	# Reproduce David's results: use his (stationary) populationAgeGroup instead of
-	# real ONS demographics. TRUE (with DavidContacts=TRUE) closely reproduces his
-	# age-stratified output; FALSE (default) uses real ONS demographics_9age.csv.
-	DavidDemog     <- FALSE
-	# Continuous demographic ageing (constant per-band rates: births into the
-	# youngest band, ageing up, deaths out of the top). FALSE = frozen population (fine for
-	# single-season reproduction). Set TRUE for multi-year runs where cohorts must age.
+
+	##########################################################################
+	# MASTER SWITCH ---------------------------------------------------------
+	#   MatchDavid = TRUE  -> reproduce David/rsvie EXACTLY (validation benchmark)
+	#   MatchDavid = FALSE -> our extended model (ONS demog, Reconnect contacts,
+	#                         realistic age-specific deaths, hospitalisation &
+	#                         mortality in the dynamics, recalibrated beta)
+	# Flip this one flag to switch every David-vs-ours fork together. Each fork
+	# below defaults to MatchDavid; set a literal TRUE/FALSE to DECOUPLE one fork
+	# for testing (e.g. ONS demog with David contacts).
+	#
+	# Forks driven by MatchDavid (David <-> ours):
+	#   DavidContacts : David transmission matrix   <-> Reconnect contacts
+	#   DavidDemog    : David rectangular population <-> ONS demographics
+	#   [TODO death rates] top-band-only <-> ONS age-specific   (modelrun.r)
+	#   [TODO h,m,mH]      0 / post-processed <-> in the dynamics (parsR_.r/parsRv_.r)
+	#   [TODO beta]        David's fitted qp <-> recalibrated on Reconnect
+	##########################################################################
+	MatchDavid     <- TRUE
+
+	DavidContacts  <- MatchDavid   # FALSE -> Reconnect matrix (Mas45.csv)
+	DavidDemog     <- MatchDavid   # FALSE -> real ONS demographics_9age.csv
+	# Continuous demographic ageing: TRUE in BOTH versions (David ages too - his
+	# eta = 1/(365*width) + births/deaths). Only the DEATH structure differs
+	# between versions (top-band-only vs ONS age-specific), wired via MatchDavid
+	# in modelrun.r once the age-specific death rates are added.
 	Ageing         <- TRUE
 	platform       <- "repo" # "pc"
 	
