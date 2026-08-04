@@ -34,7 +34,7 @@ pset <- within(pset, {
 	#   [TODO h,m,mH]      0 / post-processed <-> in the dynamics (parsR_.r/parsRv_.r)
 	#   [TODO beta]        David's fitted qp <-> recalibrated on Reconnect
 	##########################################################################
-	MatchDavid     <- TRUE
+	MatchDavid     <- FALSE
 
 	DavidContacts  <- MatchDavid   # FALSE -> Reconnect matrix (Mas45.csv)
 	DavidDemog     <- MatchDavid   # FALSE -> real ONS demographics_9age.csv
