@@ -97,22 +97,53 @@ for (ia in 1:na) { for (is in 1:nimd) {
     Ns[is] = Ns[is] + 1/oNg[(is-1)*na + ia] }}
 Npop = sum(1/oNg);
 
-## Demographic ageing rates (continuous; constant per-band rates). OFF unless
-## pset$Ageing is TRUE. When OFF, eta/births are zero and the ageing terms in the cpp vanish.
-##   eta[a] = 1/(365*width_a) for a<na  -> flow from band a to a+1
-##   eta[na]                            -> death rate from the top band, set so total deaths
-##                                         = total births (keeps David's population stationary)
-##   births[s] = daily births into IMD s's youngest band (= its 0-4 outflow)
+## Demographic ageing / vital dynamics (continuous). OFF unless pset$Ageing.
+##   eta[a] = 1/(365*width_a): ageing band a -> a+1 (BOTH schemes).
+## The cpp applies, per (band,imd) group, daily rates that are YEAR-INDEXED
+## (matrices ng|ns x nyears, flattened column-major; the cpp picks column
+## run-year = floor(day/365)):
+##   mu_year  - death: dX -= dt*mu*X on every compartment
+##   mig_year - net migration: dX += dt*mig*X (migrants in resident S/E/I/R props)
+##   births_year - per-IMD daily births into the youngest band's S
+## MatchDavid = TRUE : David's stationary scheme - eta[na] = birth-balancing top-band
+##                     death, constant per-IMD births, mu = mig = 0.
+## MatchDavid = FALSE: ONS cohort-component - eta[na] = 0; mu/mig/births are the
+##                     time-varying schedules from codes/build_demographic_rates.R.
 if (isTRUE(pset$Ageing)) {
   ag_lo <- c(0,5,15,25,35,45,55,65,75); ag_hi <- c(5,15,25,35,45,55,65,75,90)  # 9-band edges
   stopifnot(na == length(ag_lo))
-  eta      <- 1/(365*(ag_hi-ag_lo))                    # ageing-out rate per band
-  flow     <- eta[1]*Na[1]                             # constant demographic flow = daily births
-  eta[na]  <- flow / Na[na]                            # top-band death rate balances births
-  births   <- sapply(1:nimd, function(s) eta[1] * (1/oNg[(s-1)*na + 1]))  # per-IMD births into 0-4
-} else {
-  eta    <- rep(0, na)
-  births <- rep(0, nimd)
+  eta    <- 1/(365*(ag_hi-ag_lo))                      # ageing-out rate per band
+  nyears <- floor(max(pars$times) / 365) + 1           # projection years the run spans
+  yr0    <- if (!is.null(pars$run_start_year)) pars$run_start_year else 2026  # calendar yr of day 0
+
+  if (isTRUE(pset$MatchDavid)) {                        # --- David: stationary ---
+    flow    <- eta[1] * Na[1]                           # constant demographic flow = daily births
+    eta[na] <- flow / Na[na]                            # top-band death balances births
+    dbirth  <- sapply(1:nimd, function(s) eta[1] * (1/oNg[(s-1)*na + 1]))  # per-IMD daily births
+    mu_year     <- matrix(0, ng, nyears)
+    mig_year    <- matrix(0, ng, nyears)
+    births_year <- matrix(dbirth, nimd, nyears)         # constant across years
+  } else {                                              # --- ONS cohort-component ---
+    eta[na] <- 0                                        # deaths handled per-group by mu
+    mortS <- read.csv(paste0(input_dir, "/imd_mortality_9band.csv"))
+    migS  <- read.csv(paste0(input_dir, "/imd_migration_9band.csv"))
+    birS  <- read.csv(paste0(input_dir, "/imd_births.csv"))
+    clampY <- function(y) pmin(pmax(y, min(mortS$year)), max(mortS$year))  # clamp to schedule
+    mu_year <- mig_year <- matrix(0, ng, nyears); births_year <- matrix(0, nimd, nyears)
+    for (y in 0:(nyears - 1)) {
+      cy <- clampY(yr0 + y)                             # calendar year for run-year y
+      for (is in 1:nimd) for (ia in 1:na) {
+        g <- (is-1)*na + ia
+        mu_year[g,  y+1] <- mortS$mort_rate[mortS$band==ia & mortS$imd==is & mortS$year==cy] / 365
+        mig_year[g, y+1] <- migS$mig_rate [migS$band==ia  & migS$imd==is  & migS$year==cy]  / 365
+      }
+      for (is in 1:nimd)
+        births_year[is, y+1] <- birS$births[birS$imd==is & birS$year==cy] / 365
+    }
+  }
+} else {                                                # ageing off: all vital dynamics vanish
+  eta <- rep(0, na); nyears <- 1
+  mu_year <- mig_year <- matrix(0, ng, 1); births_year <- matrix(0, nimd, 1)
 }
 
 
@@ -173,7 +204,11 @@ parscpp45 = within(parscpp45 <- pars, {
                  Rg0=Rg0; Dg0=Dg0; oNg=oNg;
                  # recovery rates age-varying (length na); rep_len tolerates scalars
                  rIR=rep_len(as.numeric(rIR), na); rUR=rep_len(as.numeric(rUR), na);
-                 eta=eta; births=births })   # demographic ageing (zeros unless pset$Ageing)
+                 # vital dynamics: eta ageing + year-indexed death/migration/births
+                 # (matrices flattened column-major: index = (year)*ng + group)
+                 eta=eta; nyears=nyears;
+                 mu_year=as.vector(mu_year); mig_year=as.vector(mig_year);
+                 births_year=as.vector(births_year) })
 #  for output
 parsum = parscpp45
 #  remove what's not needed for Rcpp:
