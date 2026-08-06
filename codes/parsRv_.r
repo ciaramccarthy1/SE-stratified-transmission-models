@@ -9,9 +9,9 @@ pars <- within(pars, {
   #Age susceptibility = SUSCEPTIBLE-weighted mean of exposure-group susceptibility:
   #   u_a = sum_k d_k S_k^a / sum_k S_k^a   (d_k from David's fitted d1,d2,d3;
   #   S_k^a from his post-burn-in state). 
-  u   <- c(0.6392, 0.2614, 0.2408, 0.2401, 0.2400, 0.2400, 0.2400, 0.2400, 0.2400)
+  u   <- c(0.6392, 0.2614, 0.2408, 0.2401, 0.2400, 0.2400, 0.2400, 0.2400, 0.2400, 0.2400)  # bands 9,10 = 75-84,85+
   #Symptomatic (clinical) fraction = David rsvie fitted 1-pA (posterior medians), infection-weighted for 0-4.
-  y   <- c(0.8476, 0.4776, 0.2564, 0.2564, 0.2564, 0.2564, 0.2564, 0.2564, 0.2564)
+  y   <- c(0.8476, 0.4776, 0.2564, 0.2564, 0.2564, 0.2564, 0.2564, 0.2564, 0.2564, 0.2564)  # bands 9,10 = 75-84,85+
   #Clinical fraction - by age and IMD group
   y45 <- rep(y,5)
   
@@ -20,16 +20,16 @@ pars <- within(pars, {
   #Mortality fraction (in hospital)
   #m    <-
   
-  age = c(mean(0:4),mean(5:14),mean(15:24),mean(25:34),mean(35:44),mean(45:54),mean(55:64),mean(65:74),mean(75:90))
+  age = c(mean(0:4),mean(5:14),mean(15:24),mean(25:34),mean(35:44),mean(45:54),mean(55:64),mean(65:74),mean(75:84),mean(85:90))
   
   #Hospitalisation & mortality: computed as a POST-PROCESSING step (infections x
   #age-specific outcome risk), exactly as in David's rsvie - NOT within the dynamic model.
   #So the transmission dynamics carry no H/D removal: h = m = mH = 0. This leaves the
   #symptomatic fit unchanged (I still recovers at rIR) and keeps the population conserved
   #under ageing (no disease deaths). Apply outcome risks to the infection output downstream.
-  m  <- rep(0, 9)
-  h  <- rep(0, 9)
-  mH <- rep(0, 9)
+  m  <- rep(0, 10)
+  h  <- rep(0, 10)
+  mH <- rep(0, 10)
   rH <- 1/6                     #1/hospital stay length (days^-1); unused while h = 0
   
   # Natural waning of post-infection immunity (R -> S) is set once with the
@@ -43,8 +43,8 @@ pars <- within(pars, {
   nd     <- ceiling((max(times)-min(times)))+1   #days length of model run
   
   #demography
-  ages   <- c("0 to 4","5 to 14","15 to 24","25 to 34","35 to 44","45 to 54","55 to 64","65 to 74","75+")
-  na     <- 9               #number of age groups 
+  ages   <- c("0 to 4","5 to 14","15 to 24","25 to 34","35 to 44","45 to 54","55 to 64","65 to 74","75 to 84","85+")
+  na     <- 10              #number of age groups (75+ split into 75-84 & 85+)
   nimd   <- 5               #number of SE groups
   # ageons (age proportions) is now computed in modelrun.r from demographics_9age.csv
   
@@ -56,8 +56,8 @@ pars <- within(pars, {
   # Age-varying infectious period: infected-weighted mean over David's exposure
   # groups. Group 0 (first infection) clears in 6.10d; groups 2-3 in 4.29d
   # (ga0=6.10, g1=0.880, g2=0.799 from posteriors). Adults (all group 3) -> 4.29d.
-  rIR    <- c(0.1961, 0.2314, 0.2330, 0.2330, 0.2330, 0.2330, 0.2330, 0.2330, 0.2330) #I->R rate by age
-  rUR    <- c(0.1985, 0.2314, 0.2330, 0.2330, 0.2330, 0.2330, 0.2330, 0.2330, 0.2330) #U->R rate by age
+  rIR    <- c(0.1961, 0.2314, 0.2330, 0.2330, 0.2330, 0.2330, 0.2330, 0.2330, 0.2330, 0.2330) #I->R rate by age (9,10=75-84,85+)
+  rUR    <- c(0.1985, 0.2314, 0.2330, 0.2330, 0.2330, 0.2330, 0.2330, 0.2330, 0.2330, 0.2330) #U->R rate by age (9,10=75-84,85+)
   #rIH    <-                #hospitalisation
   #rHR    <-                #recovery rate in hospital 
   #rHD    <-                #death rate in hospital
@@ -81,7 +81,7 @@ pars <- within(pars, {
   
   #rate of reporting by age, Hodgson 2020
   # TODO PLACEHOLDER older-adult reporting (55-64,65-74,75+) = 0.000147. Not used in symptomatic fit.
-  rrep <- c(0.0023321, 0.0000305, 0.0000305, 0.0000305, 0.0000305, 0.0000305, 0.000147, 0.000147, 0.000147)
+  rrep <- c(0.0023321, 0.0000305, 0.0000305, 0.0000305, 0.0000305, 0.0000305, 0.000147, 0.000147, 0.000147, 0.000147)
   
     #vaccines: leaky V compartment with breakthrough shadow chain (V/Ev/Iv/Uv/Hv/Rv/Dv)
     #  rV   - vaccination rate (per day) for fully eligible
@@ -94,7 +94,7 @@ pars <- within(pars, {
     #  rW_nat - natural waning rate R/Rv -> S (per day); 0 disables
     # UK RSV 75+ programme: real uptake by IMD quintile (UKHSA Jan 2026 report,
     # population-weighted from deciles by codes/prepare_model_inputs.R).
-    # vcov targets band 9 (75+, the last band) only; all other ages have vcov = 0.
+    # vcov targets the 75+ programme = bands 9 AND 10 (75-84 & 85+); all others vcov = 0.
     
     ## As a placeholder, from: https://www.sciencedirect.com/science/article/pii/S2666776226000323#appsec1
     VE_hosp_obs <- 0.74
@@ -109,7 +109,7 @@ pars <- within(pars, {
     .uptake <- .uptake[order(.uptake$quintile), ]
     stopifnot(.uptake$quintile == 1:5)
     .vc <- matrix(0, na, nimd)
-    .vc[na, ] <- .uptake$uptake_pct / 100     # band 9 = last band (75+); fraction in [0,1]
+    .vc[c(na-1, na), ] <- rep(.uptake$uptake_pct / 100, each = 2)  # 75-84 & 85+ both get 75+ uptake
     vcov    <- as.vector(.vc)                 # IMD-major (length ng); col-by-col flatten
     VE_inf  <- rep(0.0, na*nimd)        
     VE_sym  <- rep(1 -  (1 - VE_sym_obs) / (1 - VE_inf_obs), na*nimd) 

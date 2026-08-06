@@ -96,9 +96,7 @@ cat(sprintf("Wrote national schedules for %d-%d: mortality, net migration, birth
 ## Split the national mortality schedule (A) across IMD quintiles using the relative
 ## deprivation gradient from ONS 2009-2020 age x decile mortality (Table 1, per 100k).
 ## Choices:
-##  - gradient years: 2016-2020 (IMD 2019-based, closest to current deprivation).
-##    NB 2020 includes early-COVID mortality (hit deprived areas harder, may widen
-##    the gradient) - kept deliberately for now; use 2016-2019 for a pre-COVID gradient.
+##  - gradient years: 2016-2020 (IMD 2019-based, closest to current deprivation);
 ##  - aggregate 5yr age groups -> our 9 bands and combine sexes with national
 ##    population weights (by sex x 5yr group); average the 2 deciles in a quintile
 ##    and the gradient years with equal weight;
@@ -154,41 +152,4 @@ print(as.data.frame(gchk |> mutate(across(-band, ~round(., 3)))))
 nrm <- grad |> group_by(band) |> summarise(wmean = sum(gradient * popq) / sum(popq))
 cat("normalisation check (pop-weighted mean of gradient per band, should all be 1):",
     paste(round(nrm$wmean, 3), collapse = " "), "\n")
-
-## --- C. IMD splits for migration and births --------------------------------
-## Migration: net migration (A) split EVENLY across the 5 IMD quintiles - no
-##   deprivation-specific migration exists sub-nationally, and IMD quintiles are
-##   ~equal population so even (net/5) ~ per-capita even. Conserves the band total.
-## Births: national births (A) split across IMD by the deprivation distribution of
-##   0-4s (band-1 population by quintile, from demographics_9age.csv) - a proxy for
-##   births-by-deprivation (deprived areas have higher fertility -> more young
-##   children). Swap for actual 2025 birth registrations by deprivation if fetched.
-
-nimd <- 5
-
-# Migration -> per-capita ANNUAL rate by band x year, EVEN across IMD:
-#   mig_rate[band, year] = net[band, year] / total band population (summed over IMD).
-# The SAME rate applies to every quintile, and the cpp applies it as dX += rate*X on
-# every compartment - so there is no deprivation gradient in the migration RATE, and
-# migrants enter in resident S/E/I/R proportions. Counts then scale with quintile pop.
-# (The /365 daily conversion is done at the cpp wiring, as for mortality.)
-# Net can be negative (net emigration) -> a proportional net removal.
-Npop_band <- popq |> group_by(band) |> summarise(N = sum(popq), .groups = "drop")
-imd_migrate <- nat_netmigrate |> left_join(Npop_band, by = "band") |>
-  mutate(mig_rate = net / N) |> tidyr::crossing(imd = 1:nimd) |>
-  transmute(band, imd, year, mig_rate)
-write.csv(imd_migrate, file.path(here("data"), "imd_migration_9band.csv"),
-          row.names = FALSE)
-
-# Births -> imd x year (split by band-1 IMD population shares)
-b1 <- dg |> filter(Age == "0 to 4")                    # dg = demographics_9age (Section B)
-birth_share <- setNames(b1$Population / sum(b1$Population), b1$IMD)
-imd_births <- nat_births |> tidyr::crossing(imd = 1:nimd) |>
-  transmute(imd, year, births = births * birth_share[as.character(imd)])
-write.csv(imd_births, file.path(here("data"), "imd_births.csv"), row.names = FALSE)
-
-cat(sprintf("\nBirth IMD shares Q1..Q5 (0-4 population proxy): %s  (sum %.3f)\n",
-            paste(round(birth_share[as.character(1:5)], 3), collapse = " "),
-            sum(birth_share)))
-cat("Migration: even per-capita rate across IMD (imd_migration_9band.csv)\n")
 

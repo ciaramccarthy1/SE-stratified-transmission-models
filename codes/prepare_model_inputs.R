@@ -13,9 +13,9 @@
 #   - data/iod2025_lsoa_ranks_deciles.csv: IoD 2025 LSOA -> IMD decile lookup
 #
 # Outputs:
-#   - data/Mas45.csv             : 45x45 wide contact matrix
+#   - data/Mas50.csv             : 50x50 wide contact matrix (10 age x 5 IMD)
 #                                  (rows = participant ig = is*na + ia)
-#   - data/demographics_9age.csv : 9-band x 5-IMD-quintile demographics
+#   - data/demographics_10age.csv: 10-band x 5-IMD-quintile demographics
 #
 # Aggregation notes for the contact matrix:
 #   Participant-side merge of {a1, a2} -> A: population-weighted average
@@ -98,13 +98,13 @@ recon_def <- list(
   "75+"=75:90)
 pop_recon <- agg_bands(pop_q_syoa, recon_def)        # 5 quintile x 16 Reconnect band
 
-# 9 model bands -> demographics
+# 10 model bands -> demographics (75+ split into 75-84 & 85+)
 band_def <- list(
   "0 to 4"=0:4, "5 to 14"=5:14, "15 to 24"=15:24, "25 to 34"=25:34,
   "35 to 44"=35:44, "45 to 54"=45:54, "55 to 64"=55:64, "65 to 74"=65:74,
-  "75+"=75:90)
+  "75 to 84"=75:84, "85+"=85:90)
 band_names <- names(band_def)
-pop_band9  <- agg_bands(pop_q_syoa, band_def)        # 5 quintile x 9 model band
+pop_band10 <- agg_bands(pop_q_syoa, band_def)        # 5 quintile x 10 model band
 
 ## --- 1. Contact matrix ------------------------------------------------------
 
@@ -127,7 +127,7 @@ mean_lookup <- setNames(cm_long$mean,
                         with(cm_long, key(Participant_IMD, Contact_IMD,
                                           Participant_age_group, Contact_age_group)))
 
-cm50 <- matrix(0, ng_new, ng_new)
+cm9 <- matrix(0, ng_new, ng_new)  # 9-band (45x45); 75+ (band 9) split into 75-84/85+ below
 for (is_p in 1:nimd) {            # participant IMD
   for (is_c in 1:nimd) {          # contact IMD
     for (ia_p in 1:na_new) {      # new participant age
@@ -144,22 +144,39 @@ for (is_p in 1:nimd) {            # participant IMD
         # participant-side: POPULATION-WEIGHTED mean over participant sub-bands,
         # using this IMD's sub-band populations (pop_recon[is_p, sub_p]).
         w <- pop_recon[is_p, sub_p]
-        cm50[(is_p - 1)*na_new + ia_p,
-             (is_c - 1)*na_new + ia_c] <- sum(w * sum_over_contacts_per_subp) / sum(w)
+        cm9[(is_p - 1)*na_new + ia_p,
+            (is_c - 1)*na_new + ia_c] <- sum(w * sum_over_contacts_per_subp) / sum(w)
       }
     }
   }
 }
 
-write.table(cm50, file.path(output_dir, "Mas45.csv"),
+# Split the 75+ contact band (9) into 75-84 (9) and 85+ (10) -> 50 x 50. Reconnect
+# stops at 75+, so: participant side - 75-84 & 85+ share the 75+ contact row
+# (duplicate); contact side - split the 75+ column between 75-84 and 85+ by population
+# share (per contact IMD), which preserves total contacts.
+p_7584 <- agg_bands(pop_q_syoa, list("75-84" = 75:84))[, 1]   # by quintile
+p_85   <- agg_bands(pop_q_syoa, list("85+"   = 85:90))[, 1]
+sh9  <- p_7584 / (p_7584 + p_85)          # share of 75+ that is 75-84, per contact IMD
+sh10 <- p_85   / (p_7584 + p_85)
+na10 <- 10; ng10 <- na10 * nimd
+cm10 <- matrix(0, ng10, ng10)
+for (is_p in 1:nimd) for (ia_p in 1:na10) for (is_c in 1:nimd) for (ia_c in 1:na10) {
+  ia_p9 <- min(ia_p, 9); ia_c9 <- min(ia_c, 9)               # bands 9,10 -> old 75+ (band 9)
+  fac   <- if (ia_c == 9) sh9[is_c] else if (ia_c == 10) sh10[is_c] else 1
+  cm10[(is_p-1)*na10 + ia_p, (is_c-1)*na10 + ia_c] <-
+    cm9[(is_p-1)*na_new + ia_p9, (is_c-1)*na_new + ia_c9] * fac
+}
+
+write.table(cm10, file.path(output_dir, "Mas50.csv"),
             sep = ",", row.names = FALSE, col.names = FALSE)
-cat(sprintf("Wrote %s: %d x %d (from Reconnect base_matrix.csv)\n",
-            "data/Mas45.csv", nrow(cm50), ncol(cm50)))
+cat(sprintf("Wrote %s: %d x %d (Reconnect, pop-weighted, 75+ split into 75-84/85+)\n",
+            "data/Mas50.csv", nrow(cm10), ncol(cm10)))
 
 ## --- 2. Demographics (9-band x IMD quintile) --------------------------------
 ## Built from the shared quintile population computed in Section 0.
 demog10 <- do.call(rbind, lapply(1:5, function(q) {
-  pops <- pop_band9[q, ]
+  pops <- pop_band10[q, ]
   tot  <- sum(pops)
   data.frame(
     Age        = band_names,
@@ -171,10 +188,10 @@ demog10 <- do.call(rbind, lapply(1:5, function(q) {
 }))
 rownames(demog10) <- NULL
 
-write.csv(demog10, file.path(output_dir, "demographics_9age.csv"),
+write.csv(demog10, file.path(output_dir, "demographics_10age.csv"),
           row.names = FALSE)
 cat(sprintf("Wrote %s: %d rows (expected %d)\n",
-            "data/demographics_9age.csv",
+            "data/demographics_10age.csv",
             nrow(demog10), 5 * length(band_names)))
 
 ## --- 3. RSV uptake by IMD quintile (population-weighted) -------------------
