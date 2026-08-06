@@ -13,9 +13,9 @@
 #   - data/iod2025_lsoa_ranks_deciles.csv: IoD 2025 LSOA -> IMD decile lookup
 #
 # Outputs:
-#   - data/Mas45.csv             : 45x45 wide contact matrix
+#   - data/Mas50.csv             : 50x50 wide contact matrix (10 age x 5 IMD)
 #                                  (rows = participant ig = is*na + ia)
-#   - data/demographics_9age.csv : 9-band x 5-IMD-quintile demographics
+#   - data/demographics_10age.csv: 10-band x 5-IMD-quintile demographics
 #
 # Aggregation notes for the contact matrix:
 #   Participant-side merge of {a1, a2} -> A: population-weighted average
@@ -49,6 +49,63 @@ new_to_reconnect <- list(
   "65-74" = c("65-69", "70-74"),
   "75+"   = "75+")
 
+## --- 0. Population by IMD quintile (shared input) ----------------------------
+## Load ONS single-year-of-age (SYOA) LSOA populations and the IoD 2025 decile
+## lookup ONCE, join, and aggregate to (quintile x SYOA). Both the contact-matrix
+## weights (pop_recon, 16-band) and the demographics (9-band, added in a later
+## step) derive from this, so the ONS file is read a single time.
+##   Decile -> Quintile: quintile = ceiling(decile / 2)  (1-2 -> Q1 most deprived)
+
+# Raw inputs are fetched by codes/fetch_data.R.
+source(file.path("codes", "fetch_data.R"))
+suppressPackageStartupMessages(library(readxl))
+
+# ONS: row 4 of the Mid-2024 sheet is the header (rows 1-3 are notes / merged title).
+ons <- read_excel(file.path(input_dir, "ons_lsoa_syoa_2022-2024.xlsx"),
+                  sheet = "Mid-2024 LSOA 2021", skip = 3)
+syoa_ages <- 0:90                                    # F0..F90 / M0..M90 (90 = 90+)
+pop_syoa  <- sapply(syoa_ages, function(a)
+  as.numeric(ons[[paste0("F", a)]]) + as.numeric(ons[[paste0("M", a)]]))
+colnames(pop_syoa) <- as.character(syoa_ages)
+
+iod <- read.csv(file.path(input_dir, "iod2025_lsoa_ranks_deciles.csv"),
+                header = TRUE, check.names = FALSE, stringsAsFactors = FALSE)
+decile_col <- grep("^Index of Multiple Deprivation \\(IMD\\) Decile",
+                   names(iod), value = TRUE)[1]
+lsoa_imd <- data.frame(lsoa     = iod[["LSOA code (2021)"]],
+                       decile   = iod[[decile_col]],
+                       quintile = ceiling(iod[[decile_col]] / 2),
+                       stringsAsFactors = FALSE)
+
+# Inner join SYOA populations to IMD (England-only LSOAs present in both)
+joined <- merge(data.frame(lsoa = ons[["LSOA 2021 Code"]], pop_syoa, check.names = FALSE),
+                lsoa_imd, by = "lsoa")
+cat(sprintf("Joined %d LSOAs (England) on (LSOA 2021 code)\n", nrow(joined)))
+
+syoa_mat   <- as.matrix(joined[, as.character(syoa_ages)])
+pop_q_syoa <- rowsum(syoa_mat, joined$quintile)      # 5 x 91  (quintile x SYOA)
+pop_d_syoa <- rowsum(syoa_mat, joined$decile)        # 10 x 91 (decile x SYOA)
+
+# Aggregate single years into a set of bands (each band = a run of single years)
+agg_bands <- function(pmat, def)
+  sapply(def, function(a) rowSums(pmat[, as.character(a), drop = FALSE]))
+
+# 16 Reconnect bands -> participant-side contact weights
+recon_def <- list(
+  "0-4"=0:4, "5-9"=5:9, "10-14"=10:14, "15-19"=15:19, "20-24"=20:24,
+  "25-29"=25:29, "30-34"=30:34, "35-39"=35:39, "40-44"=40:44, "45-49"=45:49,
+  "50-54"=50:54, "55-59"=55:59, "60-64"=60:64, "65-69"=65:69, "70-74"=70:74,
+  "75+"=75:90)
+pop_recon <- agg_bands(pop_q_syoa, recon_def)        # 5 quintile x 16 Reconnect band
+
+# 10 model bands -> demographics (75+ split into 75-84 & 85+)
+band_def <- list(
+  "0 to 4"=0:4, "5 to 14"=5:14, "15 to 24"=15:24, "25 to 34"=25:34,
+  "35 to 44"=35:44, "45 to 54"=45:54, "55 to 64"=55:64, "65 to 74"=65:74,
+  "75 to 84"=75:84, "85+"=85:90)
+band_names <- names(band_def)
+pop_band10 <- agg_bands(pop_q_syoa, band_def)        # 5 quintile x 10 model band
+
 ## --- 1. Contact matrix ------------------------------------------------------
 
 # Raw inputs are fetched by codes/fetch_data.R.
@@ -70,7 +127,7 @@ mean_lookup <- setNames(cm_long$mean,
                         with(cm_long, key(Participant_IMD, Contact_IMD,
                                           Participant_age_group, Contact_age_group)))
 
-cm50 <- matrix(0, ng_new, ng_new)
+cm9 <- matrix(0, ng_new, ng_new)  # 9-band (45x45); 75+ (band 9) split into 75-84/85+ below
 for (is_p in 1:nimd) {            # participant IMD
   for (is_c in 1:nimd) {          # contact IMD
     for (ia_p in 1:na_new) {      # new participant age
@@ -78,89 +135,48 @@ for (is_p in 1:nimd) {            # participant IMD
         sub_p <- new_to_reconnect[[new_ages[ia_p]]]
         sub_c <- new_to_reconnect[[new_ages[ia_c]]]
         # contact-side: SUM (a participant makes contacts with both sub-bands)
-        # participant-side: MEAN (TODO population-weighted; uniform for now)
         sum_over_contacts_per_subp <- vapply(
           sub_p, function(pa) {
             sum(vapply(sub_c, function(ca)
               mean_lookup[[key(is_p, is_c, pa, ca)]],
               numeric(1)))
           }, numeric(1))
-        cm50[(is_p - 1)*na_new + ia_p,
-             (is_c - 1)*na_new + ia_c] <- mean(sum_over_contacts_per_subp)
+        # participant-side: POPULATION-WEIGHTED mean over participant sub-bands,
+        # using this IMD's sub-band populations (pop_recon[is_p, sub_p]).
+        w <- pop_recon[is_p, sub_p]
+        cm9[(is_p - 1)*na_new + ia_p,
+            (is_c - 1)*na_new + ia_c] <- sum(w * sum_over_contacts_per_subp) / sum(w)
       }
     }
   }
 }
 
-write.table(cm50, file.path(output_dir, "Mas45.csv"),
+# Split the 75+ contact band (9) into 75-84 (9) and 85+ (10) -> 50 x 50. Reconnect
+# stops at 75+, so: participant side - 75-84 & 85+ share the 75+ contact row
+# (duplicate); contact side - split the 75+ column between 75-84 and 85+ by population
+# share (per contact IMD), which preserves total contacts.
+p_7584 <- agg_bands(pop_q_syoa, list("75-84" = 75:84))[, 1]   # by quintile
+p_85   <- agg_bands(pop_q_syoa, list("85+"   = 85:90))[, 1]
+sh9  <- p_7584 / (p_7584 + p_85)          # share of 75+ that is 75-84, per contact IMD
+sh10 <- p_85   / (p_7584 + p_85)
+na10 <- 10; ng10 <- na10 * nimd
+cm10 <- matrix(0, ng10, ng10)
+for (is_p in 1:nimd) for (ia_p in 1:na10) for (is_c in 1:nimd) for (ia_c in 1:na10) {
+  ia_p9 <- min(ia_p, 9); ia_c9 <- min(ia_c, 9)               # bands 9,10 -> old 75+ (band 9)
+  fac   <- if (ia_c == 9) sh9[is_c] else if (ia_c == 10) sh10[is_c] else 1
+  cm10[(is_p-1)*na10 + ia_p, (is_c-1)*na10 + ia_c] <-
+    cm9[(is_p-1)*na_new + ia_p9, (is_c-1)*na_new + ia_c9] * fac
+}
+
+write.table(cm10, file.path(output_dir, "Mas50.csv"),
             sep = ",", row.names = FALSE, col.names = FALSE)
-cat(sprintf("Wrote %s: %d x %d (from Reconnect base_matrix.csv)\n",
-            "data/Mas45.csv", nrow(cm50), ncol(cm50)))
+cat(sprintf("Wrote %s: %d x %d (Reconnect, pop-weighted, 75+ split into 75-84/85+)\n",
+            "data/Mas50.csv", nrow(cm10), ncol(cm10)))
 
-## --- 2. Demographics (from ONS LSOA SYA + IoD 2025) -------------------------
-## Build a (IMD quintile x model age band) population table by joining the
-## ONS LSOA-level single-year-of-age data to the IoD 2025 LSOA -> decile
-## lookup, then aggregating.
-##   Decile -> Quintile: quintile = ceiling(decile / 2)
-##   (deciles 1-2 -> quintile 1 most deprived, 9-10 -> quintile 5 least)
-
-suppressPackageStartupMessages(library(readxl))
-
-ons_path <- file.path(input_dir, "ons_lsoa_syoa_2022-2024.xlsx")
-iod_path <- file.path(input_dir, "iod2025_lsoa_ranks_deciles.csv")
-
-# ONS: row 4 of the Mid-2024 sheet is the header (rows 1-3 are notes / merged title)
-ons <- read_excel(ons_path, sheet = "Mid-2024 LSOA 2021", skip = 3)
-# Columns: LAD 2023 Code, LAD 2023 Name, LSOA 2021 Code, LSOA 2021 Name, Total,
-# then F0, F1, ..., F90 and M0, M1, ..., M90 (where F90/M90 are 90 and over).
-
-# Sum female + male for each single year of age
-sya_ages <- 0:90
-pop_sya  <- sapply(sya_ages, function(a)
-  as.numeric(ons[[paste0("F", a)]]) + as.numeric(ons[[paste0("M", a)]]))
-colnames(pop_sya) <- sya_ages
-
-# Aggregate single-year ages into the 9 model bands 
-band_def <- list(
-  "0 to 4"   = 0:4,
-  "5 to 14"  = 5:14,
-  "15 to 24" = 15:24,
-  "25 to 34" = 25:34,
-  "35 to 44" = 35:44,
-  "45 to 54" = 45:54,
-  "55 to 64" = 55:64,
-  "65 to 74" = 65:74,
-  "75+"      = 75:90)
-band_names <- names(band_def)
-pop_band <- sapply(band_def, function(ages)
-  rowSums(pop_sya[, as.character(ages), drop = FALSE]))
-
-# LSOA-level popn-by-band
-lsoa_demog <- data.frame(
-  lsoa = ons[["LSOA 2021 Code"]],
-  pop_band,
-  check.names = FALSE,
-  stringsAsFactors = FALSE)
-
-# IoD 2025: LSOA -> IMD decile
-iod <- read.csv(iod_path, header = TRUE, check.names = FALSE,
-                stringsAsFactors = FALSE)
-decile_col <- grep("^Index of Multiple Deprivation \\(IMD\\) Decile",
-                   names(iod), value = TRUE)[1]
-lsoa_imd <- data.frame(
-  lsoa     = iod[["LSOA code (2021)"]],
-  decile   = iod[[decile_col]],                       # 1 = most deprived
-  quintile = ceiling(iod[[decile_col]] / 2),          # decile 1-2 -> quintile 1
-  stringsAsFactors = FALSE)
-
-# Inner join: keep only LSOAs present in both (England only)
-joined <- merge(lsoa_demog, lsoa_imd, by = "lsoa")
-cat(sprintf("Joined %d LSOAs (England) on (LSOA 2021 code)\n", nrow(joined)))
-rm(ons, pop_sya, pop_band, lsoa_demog, iod, lsoa_imd)
-
-# Aggregate by (IMD quintile, age band)
+## --- 2. Demographics (9-band x IMD quintile) --------------------------------
+## Built from the shared quintile population computed in Section 0.
 demog10 <- do.call(rbind, lapply(1:5, function(q) {
-  pops <- colSums(joined[joined$quintile == q, band_names, drop = FALSE])
+  pops <- pop_band10[q, ]
   tot  <- sum(pops)
   data.frame(
     Age        = band_names,
@@ -172,10 +188,10 @@ demog10 <- do.call(rbind, lapply(1:5, function(q) {
 }))
 rownames(demog10) <- NULL
 
-write.csv(demog10, file.path(output_dir, "demographics_9age.csv"),
+write.csv(demog10, file.path(output_dir, "demographics_10age.csv"),
           row.names = FALSE)
 cat(sprintf("Wrote %s: %d rows (expected %d)\n",
-            "data/demographics_9age.csv",
+            "data/demographics_10age.csv",
             nrow(demog10), 5 * length(band_names)))
 
 ## --- 3. RSV uptake by IMD quintile (population-weighted) -------------------
@@ -187,8 +203,9 @@ uptake_dec  <- read.csv(uptake_path, stringsAsFactors = FALSE)
 uptake_dec  <- uptake_dec[order(uptake_dec$decile), ]
 stopifnot(all(uptake_dec$decile == 1:10))
 
-# 75+ population by decile (sum across all English LSOAs within each decile)
-pop_75_by_decile <- tapply(joined[["75+"]], joined$decile, sum)
+# 75+ population by decile (sum of single years 75..90, from the shared Section 0 pop)
+pop_75_by_decile <- setNames(rowSums(pop_d_syoa[, as.character(75:90)]),
+                             rownames(pop_d_syoa))
 stopifnot(length(pop_75_by_decile) == 10,
           all(as.integer(names(pop_75_by_decile)) == 1:10))
 

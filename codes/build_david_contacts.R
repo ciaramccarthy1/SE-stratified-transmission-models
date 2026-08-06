@@ -63,30 +63,47 @@ for (i in 1:na) {                      # our PARTICIPANT band
   }
 }
 
-## expand na -> na*5, homogeneous across IMD (IMD-major: g=(s-1)*na+i)
-demog <- read.csv("data/demographics_9age.csv")
-ages  <- c("0 to 4","5 to 14","15 to 24","25 to 34","35 to 44","45 to 54","55 to 64","65 to 74","75+")
-Nmat  <- matrix(0,5,na); for(s in 1:5) for(i in 1:na) Nmat[s,i] <- demog$Population[demog$IMD==s & demog$Age==ages[i]]
-share <- sweep(Nmat, 2, colSums(Nmat), "/")
-ng  <- na*5
-Cout <- matrix(0,ng,ng)
+## expand 9-band Cna -> 45x45, homogeneous across IMD (IMD-major: g=(s-1)*na+i).
+## Read the 10-band ONS demographics; fold the top two (75-84, 85+) into a 9-band 75+
+## for the expansion, and keep their split for the 75+ contact-band split below.
+demog  <- read.csv("data/demographics_10age.csv")
+ages10 <- c("0 to 4","5 to 14","15 to 24","25 to 34","35 to 44","45 to 54","55 to 64","65 to 74","75 to 84","85+")
+N10 <- matrix(0,5,10); for(s in 1:5) for(i in 1:10) N10[s,i] <- demog$Population[demog$IMD==s & demog$Age==ages10[i]]
+N9  <- cbind(N10[,1:8], N10[,9] + N10[,10])       # 5 x 9 (band 9 = 75-84 + 85+)
+share9 <- sweep(N9, 2, colSums(N9), "/")          # IMD share within each 9-band
+ng9  <- na*5
+Cout <- matrix(0,ng9,ng9)
 for(s1 in 1:5) for(i in 1:na) for(s2 in 1:5) for(j in 1:na)
-  Cout[(s1-1)*na+i, (s2-1)*na+j] <- Cna[i,j]*share[s2,j]
+  Cout[(s1-1)*na+i, (s2-1)*na+j] <- Cna[i,j]*share9[s2,j]
 
-write.table(Cout, "data/Mas45_david.csv", sep=",", row.names=FALSE, col.names=FALSE)
-cat("Wrote data/Mas45_david.csv (", nrow(Cout), "x", ncol(Cout), ")\n")
-cat("Cna row sums (contacts/person by", na, "bands):\n"); print(round(rowSums(Cna),2))
+## Split the 75+ contact band (9) into 75-84 (9) & 85+ (10) -> 50x50, as for Reconnect:
+## participant side duplicates the 75+ row; contact side splits the 75+ column by the
+## ONS 75-84 vs 85+ population share (per contact IMD). David has no data finer than 75+.
+sh9  <- N10[,9]  / (N10[,9] + N10[,10])            # share of 75+ that is 75-84, per IMD
+sh10 <- N10[,10] / (N10[,9] + N10[,10])
+na10 <- 10; ng10 <- na10*5
+Cd10 <- matrix(0, ng10, ng10)
+for(s1 in 1:5) for(i in 1:na10) for(s2 in 1:5) for(j in 1:na10) {
+  i9 <- min(i,9); j9 <- min(j,9)                  # bands 9,10 -> old 75+ (band 9)
+  fac <- if (j==9) sh9[s2] else if (j==10) sh10[s2] else 1
+  Cd10[(s1-1)*na10+i, (s2-1)*na10+j] <- Cout[(s1-1)*na+i9, (s2-1)*na+j9] * fac
+}
+write.table(Cd10, "data/Mas50_david.csv", sep=",", row.names=FALSE, col.names=FALSE)
+cat("Wrote data/Mas50_david.csv (", nrow(Cd10), "x", ncol(Cd10), ")\n")
+cat("Cna row sums (contacts/person by 9 bands, pre-split):\n"); print(round(rowSums(Cna),2))
 
-## David demographics at our na bands (his stationary populationAgeGroup, from
-## david_pop25), split across IMD by ONS shares so the age TOTALS are David's while
-## the model keeps its IMD structure. For REPRODUCING David's results only:
-## set pset$DavidDemog <- TRUE (default FALSE uses real ONS demographics_9age.csv).
-david_age <- sapply(david_bands_in, function(idx) sum(pop[idx]))  # David pop per our band
-dpop      <- sweep(share, 2, david_age, "*")  # 5 x na: David age totals, ONS IMD split
-tot       <- sum(dpop)
+## David demographics at our 10 bands: David's age totals (his populationAgeGroup),
+## the 75+ total split into 75-84/85+ by the overall ONS share, then ONS IMD split.
+## For REPRODUCING David's results only (pset$DavidDemog <- TRUE).
+david_age9  <- sapply(david_bands_in, function(idx) sum(pop[idx]))  # David pop per 9-band
+ons_sh9     <- sum(N10[,9]) / (sum(N10[,9]) + sum(N10[,10]))        # overall ONS 75-84 share
+david_age10 <- c(david_age9[1:8], david_age9[9]*ons_sh9, david_age9[9]*(1-ons_sh9))
+share10 <- sweep(N10, 2, colSums(N10), "/")
+dpop    <- sweep(share10, 2, david_age10, "*")    # 5 x 10: David age totals, ONS IMD split
+tot     <- sum(dpop)
 david_demog <- do.call(rbind, lapply(1:5, function(s) data.frame(
-  Age = ages, IMD = s, Population = as.numeric(dpop[s, ]),
+  Age = ages10, IMD = s, Population = as.numeric(dpop[s, ]),
   tot_pop = tot, Proportion = as.numeric(dpop[s, ])/tot)))
-write.csv(david_demog, "data/demographics_9age_david.csv", row.names=FALSE)
-cat("Wrote data/demographics_9age_david.csv (David pops, ONS IMD split)\n")
-cat("Pop by band - David vs ONS:\n"); print(round(rbind(David=david_age, ONS=colSums(Nmat))))
+write.csv(david_demog, "data/demographics_10age_david.csv", row.names=FALSE)
+cat("Wrote data/demographics_10age_david.csv (David pops, ONS IMD split)\n")
+cat("David pop by 10-band:\n"); print(round(david_age10))

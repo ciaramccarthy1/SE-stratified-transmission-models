@@ -40,3 +40,6 @@ data/base_matrix.csv
 data/ons_lsoa_syoa_*.xlsx
 data/iod2025_lsoa_ranks_deciles.csv
 data/ukhsa_rsv_uptake_*.html
+data/en1.zip
+data/en_ppp_machine_readable.xlsx
+data/dep_asmr_2009_2020.xlsx

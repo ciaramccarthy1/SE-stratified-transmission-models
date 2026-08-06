@@ -45,11 +45,17 @@ List model(List parscpp) {
   const std::vector<double> mH( parscpp["mH"]);    //mortality fraction (among hospitalised), length na
   const std::vector<double> rrep(parscpp["rrep"]); //reporting rate, length na
 
-  //demographic ageing (continuous): eta = ageing-out rate per band (eta[na-1] = death
-  //rate from the top band); births = daily births into each IMD's youngest S.
-  //All-zero eta & births disable ageing (default).
-  const std::vector<double> eta(   parscpp["eta"]);     //length na
-  const std::vector<double> births(parscpp["births"]);  //length ns
+  //vital dynamics (continuous). eta = ageing-out rate per band. mu_year (death) and
+  //mig_year (net migration) are per-group daily rates, YEAR-INDEXED (ng x nyears,
+  //flattened col-major: index = year*ng + ig); both applied to every living
+  //compartment, so migrants enter in resident S/E/I/R proportions. births_year =
+  //per-IMD daily births into the youngest band's S (ns x nyears). run-year = day/365.
+  //All-zero rates disable vital dynamics (default).
+  const std::vector<double> eta(        parscpp["eta"]);         //length na
+  const std::vector<double> mu_year(    parscpp["mu_year"]);     //ng*nyears
+  const std::vector<double> mig_year(   parscpp["mig_year"]);    //ng*nyears
+  const std::vector<double> births_year(parscpp["births_year"]); //ns*nyears
+  const int nyears( parscpp["nyears"]);
 
   //contact matrix
   const std::vector<double> cm( parscpp["cm"]);
@@ -135,6 +141,11 @@ List model(List parscpp) {
     //snapshot of current state for ageing (begin-of-step values -> exactly conserves people)
     std::vector<double> Sp=S_0, Ep=E_0, Ip=I_0, Up=U_0, Hp=H_0, Rp=R_0;
 
+    //projection run-year for the year-indexed vital-dynamics rates (clamped)
+    int yidx = (int)(time[it] / 365.0);
+    if (yidx < 0) yidx = 0;
+    if (yidx >= nyears) yidx = nyears - 1;
+
     for (int is = 0; is < ns; is++) {
     for (int ia = 0; ia < na; ia++) {
       ig    = is*na + ia;
@@ -182,16 +193,22 @@ List model(List parscpp) {
       dD  = dt*(  mHa*rHo               );
       dCc = dt*(  yas*rEo*rrepa         );
 
-      // --- demographic ageing: eta[ia] out (to ia+1; death from the top band), eta[ia-1] in ---
+      // --- ageing: eta[ia] out (to ia+1; or top-band death when MatchDavid), eta[ia-1] in ---
       dS -= dt*eta[ia]*Sat; dE -= dt*eta[ia]*Eat; dI -= dt*eta[ia]*Iat;
       dU -= dt*eta[ia]*Uat; dH -= dt*eta[ia]*Hat; dR -= dt*eta[ia]*Rat;
       if (ia > 0) {                 // ageing in from band below (same IMD); begin-of-step values
         double r = eta[ia-1];
         dS += dt*r*Sp[ig-1]; dE += dt*r*Ep[ig-1]; dI += dt*r*Ip[ig-1];
         dU += dt*r*Up[ig-1]; dH += dt*r*Hp[ig-1]; dR += dt*r*Rp[ig-1];
-      } else {                      // youngest band: births enter susceptible
-        dS += dt*births[is];
+      } else {                      // youngest band: per-IMD births enter susceptible
+        dS += dt*births_year[yidx*ns + is];
       }
+      // --- background mortality (mu) & net migration (mig), per-group, year-indexed ---
+      // net per-capita rate on every living compartment: migrants enter in resident props,
+      // deaths remove proportionally. (All zero under MatchDavid.)
+      double vit = mig_year[yidx*ng + ig] - mu_year[yidx*ng + ig];
+      dS += dt*vit*Sat; dE += dt*vit*Eat; dI += dt*vit*Iat;
+      dU += dt*vit*Uat; dH += dt*vit*Hat; dR += dt*vit*Rat;
 
       S_0[ig]  = Sat  + dS;
       E_0[ig]  = Eat  + dE;

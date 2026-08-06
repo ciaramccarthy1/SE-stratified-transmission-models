@@ -79,6 +79,43 @@ fetch_if_missing(
   expected_bytes = 1e6,
   label = "IoD 2025 LSOA ranks/scores/deciles + population denominators")
 
+## --- ONS 2024-based national population projections (England) --------------
+## Principal projection (en_ppp): single year of age x sex x year, with mortality,
+## migration and fertility/births assumptions + projected population. Feeds the
+## time-varying cohort-component rates in codes/build_demographic_rates.R.
+## Downloaded as a ~16MB zip; we only need the principal machine-readable workbook.
+ons_proj_zip <- file.path(input_dir, "en1.zip")
+fetch_if_missing(
+  url   = paste0("https://www.ons.gov.uk/file?uri=",
+                 "/peoplepopulationandcommunity/populationandmigration/",
+                 "populationprojections/datasets/",
+                 "z3zippedpopulationprojectionsdatafilesengland/2024based/en1.zip"),
+  path  = ons_proj_zip,
+  expected_bytes = 1e7,
+  label = "ONS 2024-based national population projections (England)")
+
+ons_proj_ppp <- file.path(input_dir, "en_ppp_machine_readable.xlsx")
+if (!file.exists(ons_proj_ppp)) {
+  unzip(ons_proj_zip, files = "en_ppp_machine_readable.xlsx", exdir = input_dir)
+  cat(sprintf("Extracted %s from en1.zip\n", basename(ons_proj_ppp)))
+} else {
+  message(sprintf("Using cached %s (delete to re-extract from en1.zip)", ons_proj_ppp))
+}
+
+## --- ONS age x IMD-decile mortality, 2009-2020 (deprivation gradient) -------
+## Ad-hoc release: age-specific mortality rates (per 100,000) by deprivation
+## decile, sex and 5-year age group. Feeds the mortality IMD split (gradient) in
+## codes/build_demographic_rates.R (Section B).
+fetch_if_missing(
+  url   = paste0("https://www.ons.gov.uk/file?uri=",
+                 "/peoplepopulationandcommunity/birthsdeathsandmarriages/",
+                 "lifeexpectancies/adhocs/",
+                 "14329agespecificmortalityratesforenglandbydeprivationdecilessex",
+                 "andfiveyearagegroups2009to2020/agespecificrates.xlsx"),
+  path  = file.path(input_dir, "dep_asmr_2009_2020.xlsx"),
+  expected_bytes = 1e5,
+  label = "ONS age x IMD-decile mortality 2009-2020")
+
 ## --- Source-paper per-age parameter tables (RSV) ---------------------------
 ## Feeds: u, y, m, h, mH, rrep per age in parsR_.r / parsRv_.r.
 
